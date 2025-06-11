@@ -1,11 +1,9 @@
-"use client"
-
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Eye, Plus, Filter, History, Download } from "lucide-react"
-import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Badge } from "../ui/badge"
+import { Button } from "../../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
 
 const requestsData = [
   {
@@ -33,7 +31,7 @@ const requestsData = [
 
 const filters = ["Pendientes", "Completadas", "Todas"]
 
-export function RequestsTable() {
+export default function Solicitudes() {
   const [selectedFilter, setSelectedFilter] = useState("Pendientes")
 
   const getPriorityColor = (prioridad: string) => {

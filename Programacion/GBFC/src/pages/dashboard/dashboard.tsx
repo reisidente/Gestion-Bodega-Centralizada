@@ -1,103 +1,170 @@
-import { useState } from "react"
 import { motion } from "framer-motion"
-import { Sidebar } from "../../components/layaut/sliderbar"
 import { SmoothBackground } from "../../components/animations/smooth-bachground"
-import { MetricsCards } from "../../components/dashboard/metrics-cards"
-import { RecentActivity } from "../../components/dashboard/recent-activity"
-import { InventoryTable } from "../../components/dashboard/iventory-table"
-import { RequestsTable } from "../../components/dashboard/requests-table"
+import { Package, FileText, AlertTriangle, TrendingDown, Clock } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
 
-export default function Component() {
-  const [activeSection, setActiveSection] = useState("home")
+// --- MÉTRICAS ---
+const metrics = [
+  {
+    title: "Fármacos",
+    value: "1,247",
+    icon: Package,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+  },
+  {
+    title: "Solicitudes pendientes",
+    value: "23",
+    icon: FileText,
+    color: "text-orange-600",
+    bgColor: "bg-orange-50",
+  },
+  {
+    title: "Próximos a vencer",
+    value: "15",
+    icon: AlertTriangle,
+    color: "text-red-600",
+    bgColor: "bg-red-50",
+  },
+  {
+    title: "Stock bajo",
+    value: "8",
+    icon: TrendingDown,
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-50",
+  },
+]
 
-  const renderContent = () => {
-    switch (activeSection) {
-      case "home":
-        return (
-          <div className="space-y-6">
-            <MetricsCards />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <InventoryTable />
-              </div>
-              <div>
-                <RecentActivity />
-              </div>
-            </div>
-          </div>
-        )
-      case "inventario":
-        return <InventoryTable />
-      case "solicitudes":
-        return <RequestsTable />
-      case "alertas":
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Alertas</h2>
-            <p className="text-gray-600">Sección en desarrollo</p>
-          </div>
-        )
-      case "reportes":
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Reportes</h2>
-            <p className="text-gray-600">Sección en desarrollo</p>
-          </div>
-        )
-      default:
-        return null
-    }
-  }
+// --- ACTIVIDAD RECIENTE ---
+const activities = [
+  {
+    id: 1,
+    type: "stock",
+    message: "Stock ajustado: Paracetamol 500mg",
+    time: "Hace 5 min",
+    icon: Package,
+    color: "text-blue-600",
+  },
+  {
+    id: 2,
+    type: "solicitud",
+    message: "Nueva solicitud de Farmacia Central",
+    time: "Hace 15 min",
+    icon: FileText,
+    color: "text-green-600",
+  },
+  {
+    id: 3,
+    type: "alerta",
+    message: "Alerta: Ibuprofeno próximo a vencer",
+    time: "Hace 1 hora",
+    icon: AlertTriangle,
+    color: "text-red-600",
+  },
+  {
+    id: 4,
+    type: "stock",
+    message: "Nuevo lote registrado: Amoxicilina",
+    time: "Hace 2 horas",
+    icon: Package,
+    color: "text-blue-600",
+  },
+]
 
+export default function Dashboard() {
   return (
     <>
       <SmoothBackground />
 
-      <div className="min-h-screen">
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <motion.div
+        className="p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Header */}
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+        >
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-gray-600">Resumen general del sistema farmacéutico</p>
+        </motion.div>
 
-        <main className="ml-64 transition-all duration-300">
-          <motion.div
-            className="p-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Header */}
+        {/* MÉTRICAS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {metrics.map((metric, index) => (
             <motion.div
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
+              key={metric.title}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
+              transition={{ delay: index * 0.1, duration: 0.4 }}
             >
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {activeSection === "home" && "Dashboard"}
-                {activeSection === "inventario" && "Gestión de Inventario"}
-                {activeSection === "solicitudes" && "Gestión de Solicitudes"}
-                {activeSection === "alertas" && "Centro de Alertas"}
-                {activeSection === "reportes" && "Reportes y Análisis"}
-              </h1>
-              <p className="text-gray-600">
-                {activeSection === "home" && "Resumen general del sistema farmacéutico"}
-                {activeSection === "inventario" && "Control y seguimiento de medicamentos"}
-                {activeSection === "solicitudes" && "Administración de pedidos y despachos"}
-                {activeSection === "alertas" && "Monitoreo de vencimientos y stock"}
-                {activeSection === "reportes" && "Análisis y estadísticas del sistema"}
-              </p>
+              <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm hover:shadow-md transition-all duration-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">{metric.title}</p>
+                      <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
+                    </div>
+                    <div className={`p-3 rounded-lg ${metric.bgColor}`}>
+                      <metric.icon className={`h-5 w-5 ${metric.color}`} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
+          ))}
+        </div>
 
-            {/* Content */}
+        {/* ACTIVIDAD RECIENTE */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            {/* Puedes agregar más contenido aquí si lo necesitas */}
+          </div>
+          <div>
             <motion.div
-              key={activeSection}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
             >
-              {renderContent()}
+              <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Actividad Reciente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {activities.map((activity, index) => (
+                    <motion.div
+                      key={activity.id}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50/50 transition-colors duration-200"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                    >
+                      <div className={`p-2 rounded-lg bg-gray-50`}>
+                        <activity.icon className={`h-4 w-4 ${activity.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900 mb-1">{activity.message}</p>
+                        <p className="text-xs text-gray-500">{activity.time}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {activity.type}
+                      </Badge>
+                    </motion.div>
+                  ))}
+                </CardContent>
+              </Card>
             </motion.div>
-          </motion.div>
-        </main>
-      </div>
+          </div>
+        </div>
+      </motion.div>
     </>
   )
 }

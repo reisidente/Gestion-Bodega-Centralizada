@@ -1,11 +1,9 @@
-"use client"
-
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Edit, Settings, Plus, Filter, History, Download } from "lucide-react"
-import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Badge } from "../ui/badge"
+import { Button } from "../../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
 
 const inventoryData = [
   {
@@ -39,7 +37,7 @@ const inventoryData = [
 
 const categories = ["Todos", "Antibióticos", "Analgésicos"]
 
-export function InventoryTable() {
+export default function Inventario() {
   const [selectedCategory, setSelectedCategory] = useState("Todos")
 
   const getStatusColor = (estado: string) => {
