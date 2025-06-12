@@ -4,7 +4,6 @@ import { Package, FileText, AlertTriangle, TrendingDown, Clock } from "lucide-re
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
 
-// --- MÉTRICAS ---
 const metrics = [
   {
     title: "Fármacos",
@@ -36,7 +35,6 @@ const metrics = [
   },
 ]
 
-// --- ACTIVIDAD RECIENTE ---
 const activities = [
   {
     id: 1,

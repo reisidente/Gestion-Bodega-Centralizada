@@ -4,8 +4,9 @@ import Login from './pages/logins/login'
 import Dashboard from './pages/dashboard/dashboard'
 import Inventario from './pages/inventario/inventario'
 import Solicitudes from './pages/solicitudes/solicitudes'
+import Alertas from './pages/alertas/alertas'
+import Reportes from './pages/reportes/reportes'
 import { Sidebar } from './components/loyout/sliderbar'
-
 
 
 <Route path="/" element={<Login />} />
@@ -36,6 +37,46 @@ function App() {
           element={
             <Sidebar activeSection="solicitudes">
               <Solicitudes />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/solicitudes"
+          element={
+            <Sidebar activeSection="solicitudes">
+              <Solicitudes />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/solicitudes"
+          element={
+            <Sidebar activeSection="solicitudes">
+              <Solicitudes />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/solicitudes"
+          element={
+            <Sidebar activeSection="solicitudes">
+              <Solicitudes />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/alertas"
+          element={
+            <Sidebar activeSection="alertas">
+              <Alertas />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <Sidebar activeSection="reportes">
+              <Reportes />
             </Sidebar>
           }
         />
