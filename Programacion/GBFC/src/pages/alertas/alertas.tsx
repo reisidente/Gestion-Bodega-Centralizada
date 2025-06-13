@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { Filter, Download, Settings } from "lucide-react"
 import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardHeader } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
+import { TableContainer } from "../../components/ui/table"
 
 const alertasData = [
   {
@@ -28,76 +28,126 @@ const alertasData = [
   },
 ]
 
-const filtros = ["Vencimiento", "Stock bajo", "Todas"]
+const categories = [
+  "Todas",
+  "Vencimiento",
+  "Stock bajo",
+]
 
 export default function Alertas() {
-  const [filtroActivo, setFiltroActivo] = useState("Vencimiento")
+  const [SelectedCategory, setSelectedCategory] = useState("Todas")
+  const [search, setSearch] = useState("")
+
+  const getNivelColor = (nivel: string) => {
+    switch (nivel) {
+      case "Alto":
+        return "destructive"
+      case "Medio":
+        return "warning"
+      case "Bajo":
+        return "secondary"
+      default:
+        return "secondary"
+    }
+  }
+
+  const getEstadoColor = (estado: string) => {
+    switch (estado) {
+      case "Próximo a vencer":
+        return "warning"
+      case "Stock bajo":
+        return "destructive"
+      default:
+        return "secondary"
+    }
+  }
+
+  const filteredData = alertasData.filter(
+    (item) =>
+      (SelectedCategory === "Todas" || item.tipo === SelectedCategory) &&
+      (item.farmaco.toLowerCase().includes(search.toLowerCase()) ||
+        item.lote.toLowerCase().includes(search.toLowerCase()))
+  )
 
   return (
-    <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm m-8">
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex gap-2">
-            {filtros.map((filtro) => (
-              <Button
-                key={filtro}
-                variant={filtroActivo === filtro ? "default" : "outline"}
-                onClick={() => setFiltroActivo(filtro)}
-                className="h-8"
-              >
-                {filtro}
-              </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Configurar alertas
-            </Button>
-          </div>
+    <div className="w-full max-w-7xl mx-auto px-2 py-6">
+      {/* Título y acciones */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">Alertas</h1>
+          <p className="text-gray-500 text-lg mt-1">Gestión y monitoreo de alertas de fármacos</p>
         </div>
-        <div className="flex items-center mt-4">
-          <Button variant="outline" size="sm" className="mr-2">
-            <Filter className="h-4 w-4 mr-2" />
+        <div className="flex gap-2 mt-2 md:mt-0">
+          <Button variant="outline" className="flex items-center gap-2 font-medium">
+            <Download className="h-5 w-5" />
+            Exportar
+          </Button>
+          <Button variant="outline" className="flex items-center gap-2 font-medium">
+            <Settings className="h-5 w-5" />
+            Configurar alertas
+          </Button>
+        </div>
+      </div>
+
+      {/* Filtros y búsqueda */}
+      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+        <div className="flex flex-1 gap-1 flex-wrap">
+          {categories.map((filtro) => (
+            <Button
+              key={filtro}
+              variant={SelectedCategory === filtro ? "default" : "ghost"}
+              className={`rounded-md px-4 py-2 text-base font-medium ${
+                SelectedCategory === filtro ? "" : "text-gray-700"
+              }`}
+              onClick={() => setSelectedCategory(filtro)}
+            >
+              {filtro}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 px-4 py-2 text-base font-medium"
+          >
+            <Filter className="h-5 w-5" />
             Filtros
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Fármaco</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Lote</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Tipo</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Nivel</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {alertasData.map((item, idx) => (
-                <tr
-                  key={item.lote}
-                  className={idx % 2 === 1 ? "bg-gray-100/50" : ""}
-                >
-                  <td className="py-3 px-4">{item.farmaco}</td>
-                  <td className="py-3 px-4">{item.lote}</td>
-                  <td className="py-3 px-4">{item.tipo}</td>
-                  <td className="py-3 px-4">{item.nivel}</td>
-                  <td className="py-3 px-4">
-                    <Badge variant="outline">{item.estado}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex-1 flex justify-end">
+          <input
+            type="text"
+            placeholder="Buscar fármaco o lote..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border rounded-md px-4 py-2 text-base w-full md:w-72 outline-none focus:ring-2 focus:ring-blue-200 transition"
+          />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Tabla */}
+      <TableContainer
+        columns={[
+          { header: "Fármaco", render: item => <span className="font-medium text-gray-900">{item.farmaco}</span> },
+          { header: "Lote", render: item => item.lote },
+          { header: "Tipo", render: item => item.tipo },
+          {
+            header: "Nivel",
+            render: item => (
+              <Badge variant={getNivelColor(item.nivel)} className="text-xs">
+                {item.nivel}
+              </Badge>
+            ),
+          },
+          {
+            header: "Estado",
+            render: item => (
+              <Badge variant={getEstadoColor(item.estado)} className="text-xs">
+                {item.estado}
+              </Badge>
+            ),
+          },
+        ]}
+        data={filteredData}
+      />
+    </div>
   )
 }

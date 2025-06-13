@@ -1,9 +1,9 @@
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Eye, Plus, Filter, History, Download } from "lucide-react"
+import { useState, useRef } from "react"
+import { Eye, Plus, Filter, Download, MoreVertical } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
+import { TableContainer } from "../../components/ui/table"
 
 const requestsData = [
   {
@@ -29,10 +29,18 @@ const requestsData = [
   },
 ]
 
-const filters = ["Pendientes", "Completadas", "Todas"]
+const categories = [
+  "Todas",
+  "Pendientes",
+  "Completadas",
+]
 
 export default function Solicitudes() {
-  const [selectedFilter, setSelectedFilter] = useState("Pendientes")
+  const [selectedCategory, setSelectedCategory] = useState("Todas")
+  const [search, setSearch] = useState("")
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
+  const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 
   const getPriorityColor = (prioridad: string) => {
     switch (prioridad) {
@@ -41,9 +49,7 @@ export default function Solicitudes() {
       case "Media":
         return "warning"
       case "Baja":
-        return "secondary"
-      default:
-        return "secondary"
+        return "success"
     }
   }
 
@@ -55,106 +61,153 @@ export default function Solicitudes() {
         return "warning"
       case "Pendiente":
         return "destructive"
-      default:
-        return "secondary"
     }
   }
 
+  const filteredData = requestsData.filter(
+    (item) =>
+      (selectedCategory === "Todas" || item.estado === selectedCategory) &&
+      (item.id.toLowerCase().includes(search.toLowerCase()) ||
+        item.farmacia.toLowerCase().includes(search.toLowerCase()))
+  )
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, duration: 0.5 }}
-    >
-      <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900">Solicitudes</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button size="sm" className="bg-gray-900 hover:bg-gray-800">
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Solicitud
-              </Button>
-            </div>
-          </div>
+    <div className="w-full max-w-7xl mx-auto px-2 py-6">
+      {/* Título y acciones */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">Solicitudes</h1>
+          <p className="text-gray-500 text-lg mt-1">Gestión de solicitudes de farmacia</p>
+        </div>
+        <div className="flex gap-2 mt-2 md:mt-0">
+          <Button variant="outline" className="flex items-center gap-2 font-medium">
+            <Download className="h-5 w-5" />
+            Exportar
+          </Button>
+          <Button className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white">
+            <Plus className="h-5 w-5" />
+            Nueva Solicitud
+          </Button>
+        </div>
+      </div>
 
-          {/* Filters */}
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-600">Filtros:</span>
-              {filters.map((filter) => (
+      {/* Filtros y búsqueda */}
+      <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+        <div className="flex flex-1 gap-1 flex-wrap">
+          {categories.map((filter) => (
+            <Button
+              key={filter}
+              variant={selectedCategory === filter ? "default" : "ghost"}
+              className={`rounded-md px-4 py-2 text-base font-medium ${
+                selectedCategory === filter ? "" : "text-gray-700"
+              }`}
+              onClick={() => setSelectedCategory(filter)}
+            >
+              {filter}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 px-4 py-2 text-base font-medium"
+          >
+            <Filter className="h-5 w-5" />
+            Filtros
+          </Button>
+        </div>
+        <div className="flex-1 flex justify-end">
+          <input
+            type="text"
+            placeholder="Buscar solicitud o farmacia..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="border rounded-md px-4 py-2 text-base w-full md:w-72 outline-none focus:ring-2 focus:ring-blue-200 transition"
+          />
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <TableContainer
+        columns={[
+          { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span> },
+          { header: "Farmacia", render: item => item.farmacia },
+          { header: "Fecha", render: item => item.fecha },
+          {
+            header: "Prioridad",
+            render: item => (
+              <Badge variant={getPriorityColor(item.prioridad)} className="text-xs">
+                {item.prioridad}
+              </Badge>
+            ),
+          },
+          {
+            header: "Estado",
+            render: item => (
+              <Badge variant={getStatusColor(item.estado)} className="text-xs">
+                {item.estado}
+              </Badge>
+            ),
+          },
+          {
+            header: "Acciones",
+            render: item => (
+              <div className="flex items-center">
                 <Button
-                  key={filter}
-                  variant={selectedFilter === filter ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedFilter(filter)}
-                  className="h-8"
+                  ref={el => { buttonRefs.current[item.id] = el }}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 p-0"
+                  onClick={() => {
+                    const rect = buttonRefs.current[item.id]?.getBoundingClientRect()
+                    setOpenMenu(openMenu === item.id ? null : item.id)
+                    setMenuPosition(
+                      rect
+                        ? {
+                            top: rect.bottom + window.scrollY,
+                            left: Math.min(rect.left, window.innerWidth - 220),
+                          }
+                        : null
+                    )
+                  }}
+                  aria-label="Acciones"
                 >
-                  {filter}
+                  <MoreVertical className="h-5 w-5" />
                 </Button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm">
-                <History className="h-4 w-4 mr-2" />
-                Historial
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Farmacia</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Fecha</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Prioridad</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Estado</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requestsData.map((request, index) => (
-                  <motion.tr
-                    key={request.id}
-                    className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors duration-200"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <td className="py-3 px-4 font-medium text-gray-900">{request.id}</td>
-                    <td className="py-3 px-4 text-gray-600">{request.farmacia}</td>
-                    <td className="py-3 px-4 text-gray-600">{request.fecha}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant={getPriorityColor(request.prioridad)} className="text-xs">
-                        {request.prioridad}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={getStatusColor(request.estado)} className="text-xs">
-                        {request.estado}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+                <AnimatePresence>
+                  {openMenu === item.id && menuPosition && (
+                    <>
+                      {/* Backdrop para cerrar el menú al hacer clic fuera */}
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setOpenMenu(null)}
+                        aria-hidden="true"
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="fixed bg-white border rounded-xl shadow-lg z-50 min-w-[200px] py-2"
+                        style={{
+                          top: menuPosition.top,
+                          left: menuPosition.left,
+                        }}
+                      >
+                        <button
+                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                          onClick={() => setOpenMenu(null)}
+                        >
+                          <Eye className="h-4 w-4" /> Ver detalles
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            ),
+          },
+        ]}
+        data={filteredData}
+      />
+    </div>
   )
 }
