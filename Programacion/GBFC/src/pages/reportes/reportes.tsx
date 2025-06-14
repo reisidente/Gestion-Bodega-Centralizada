@@ -1,34 +1,54 @@
 import { useState, useRef } from "react"
-import { Filter, Download, Settings, Clock, BarChart2, AlertTriangle, MoreVertical, Eye, Pencil } from "lucide-react"
+import { Filter, Download, Settings, MoreVertical, Eye, Pencil } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
+import { VerReporteModal } from "../../components/modals/ver_reporte"
+import { EditarReporteModal } from "../../components/modals/editar_reporte"
 
 const reportesData = [
   {
     nombre: "Inventario General",
     tipo: "Inventario",
-    icono: <Clock className="inline-block mr-2 h-5 w-5" />,
     fecha: "2025-06-01",
     creadoPor: "Administrador",
     formato: "PDF",
+    descripcion: "Reporte completo del inventario actual con desglose por categorías",
+    parametros: { incluirStockCero: true, ordenarPor: "Categoría" },
+    columnas: ["Fármaco", "Lote", "Stock", "Vencimiento"],
+    datos: [
+      { "Fármaco": "Paracetamol", "Lote": "PAR001", "Stock": 100, "Vencimiento": "12/2025" },
+      { "Fármaco": "Ibuprofeno", "Lote": "IBU003", "Stock": 50, "Vencimiento": "11/2025" },
+    ],
   },
   {
     nombre: "Próximos Vencimientos",
     tipo: "Vencimientos",
-    icono: <BarChart2 className="inline-block mr-2 h-5 w-5" />,
     fecha: "2025-06-01",
     creadoPor: "Administrador",
     formato: "PDF",
+    descripcion: "Fármacos que vencerán en los próximos 90 días ordenados por fecha",
+    parametros: { dias: 90, ordenarPor: "Días restantes" },
+    columnas: ["Fármaco", "Lote", "Vencimiento", "Días restantes"],
+    datos: [
+      { "Fármaco": "Paracetamol", "Lote": "PAR001", "Vencimiento": "12/2025", "Días restantes": 80 },
+      { "Fármaco": "Ibuprofeno", "Lote": "IBU003", "Vencimiento": "11/2025", "Días restantes": 60 },
+    ],
   },
   {
     nombre: "Stock Bajo",
     tipo: "Stock bajo",
-    icono: <AlertTriangle className="inline-block mr-2 h-5 w-5" />,
     fecha: "2025-06-01",
     creadoPor: "Administrador",
     formato: "PDF",
+    descripcion: "Fármacos con stock por debajo del mínimo requerido",
+    parametros: { ordenarPor: "Déficit (unidades faltantes)" },
+    columnas: ["Fármaco", "Stock actual", "Stock mínimo", "Déficit"],
+    datos: [
+      { "Fármaco": "Paracetamol", "Stock actual": 10, "Stock mínimo": 50, "Déficit": 40 },
+      { "Fármaco": "Ibuprofeno", "Stock actual": 5, "Stock mínimo": 30, "Déficit": 25 },
+    ],
   },
 ]
 
@@ -40,6 +60,8 @@ export default function Reportes() {
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
+  const [modalVer, setModalVer] = useState<{ open: boolean; data?: any }>({ open: false })
+  const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false })
 
   const filteredData = reportesData.filter(
     (item) =>
@@ -61,9 +83,9 @@ export default function Reportes() {
             <Download className="h-5 w-5" />
             Exportar
           </Button>
-          <Button variant="outline" className="flex items-center gap-2 font-medium">
+          <Button className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white">
             <Settings className="h-5 w-5" />
-            Configurar reportes
+            Generar reporte
           </Button>
         </div>
       </div>
@@ -102,11 +124,11 @@ export default function Reportes() {
         </div>
       </div>
 
-      {/* Tabla reutilizable */}
+      {/* Tabla de reportes */}
       <TableContainer
         columns={[
           { header: "Nombre", render: item => <span className="font-medium text-gray-900">{item.nombre}</span> },
-          { header: "Tipo", render: item => <span className="flex items-center">{item.icono}{item.tipo}</span> },
+          { header: "Tipo", render: item => item.tipo },
           { header: "Fecha", render: item => item.fecha ? new Date(item.fecha).toLocaleDateString() : "" },
           { header: "Creado por", render: item => item.creadoPor },
           { header: "Formato", render: item => <Badge className="text-xs">{item.formato}</Badge> },
@@ -138,7 +160,6 @@ export default function Reportes() {
                 <AnimatePresence>
                   {openMenu === item.nombre && menuPosition && (
                     <>
-                      {/* Backdrop para cerrar el menú al hacer clic fuera */}
                       <div
                         className="fixed inset-0 z-10"
                         onClick={() => setOpenMenu(null)}
@@ -157,7 +178,10 @@ export default function Reportes() {
                       >
                         <button
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => setOpenMenu(null)}
+                          onClick={() => {
+                            setModalVer({ open: true, data: item })
+                            setOpenMenu(null)
+                          }}
                         >
                           <Eye className="h-4 w-4" /> Ver reporte
                         </button>
@@ -169,7 +193,10 @@ export default function Reportes() {
                         </button>
                         <button
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => setOpenMenu(null)}
+                          onClick={() => {
+                            setModalEditar({ open: true, data: item })
+                            setOpenMenu(null)
+                          }}
                         >
                           <Pencil className="h-4 w-4" /> Editar
                         </button>
@@ -182,6 +209,29 @@ export default function Reportes() {
           },
         ]}
         data={filteredData}
+      />
+
+      {/* Modals */}
+      <VerReporteModal
+        open={modalVer.open}
+        onClose={() => setModalVer({ open: false })}
+        reporte={modalVer.data || {}}
+        onDescargar={() => {/* lógica de descarga */}}
+        onEditar={() => {
+          setModalVer({ open: false })
+          setModalEditar({ open: true, data: modalVer.data })
+        }}
+        onVolver={() => setModalVer({ open: false })}
+      />
+
+      <EditarReporteModal
+        open={modalEditar.open}
+        onClose={() => setModalEditar({ open: false })}
+        initialData={modalEditar.data || {}}
+        onSave={_data => {
+          // lógica para guardar cambios
+          setModalEditar({ open: false })
+        }}
       />
     </div>
   )

@@ -7,6 +7,7 @@ import { TableContainer } from "../../components/ui/table"
 import { EditFarmacoModal } from "../../components/modals/editar_farmaco"
 import { AjustarStockModal } from "../../components/modals/ajuste_farmaco"
 import { HistorialFarmacoModal } from "../../components/modals/historial_farmaco"
+import { RegistrarFarmacoModal } from "../../components/modals/registro_farmaco"
 
 const inventoryData = [
   {
@@ -55,6 +56,7 @@ export default function Inventario() {
   const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalAjuste, setModalAjuste] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalHistorial, setModalHistorial] = useState<{ open: boolean; data?: any }>({ open: false })
+  const [modalRegistrar, setModalRegistrar] = useState(false) // <-- Estado para el modal
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
@@ -78,7 +80,6 @@ export default function Inventario() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-2 py-6">
-      {/* Título y acciones */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Inventario</h1>
@@ -89,14 +90,16 @@ export default function Inventario() {
             <Download className="h-5 w-5" />
             Exportar
           </Button>
-          <Button className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white">
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalRegistrar(true)} // <-- Abre el modal al hacer click
+          >
             <Plus className="h-5 w-5" />
             Registrar Fármaco
           </Button>
         </div>
       </div>
 
-      {/* Filtros y búsqueda */}
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
         <div className="flex flex-1 gap-1 flex-wrap">
           {categories.map((cat) => (
@@ -130,7 +133,6 @@ export default function Inventario() {
         </div>
       </div>
 
-      {/* Tabla */}
       <TableContainer
         columns={[
           { header: "Nombre", render: item => <span className="font-medium text-gray-900">{item.nombre}</span> },
@@ -201,7 +203,6 @@ export default function Inventario() {
                           left: menuPosition.left,
                         }}
                       >
-                        <div className="px-4 py-2 text-sm font-semibold text-gray-700">Acciones</div>
                         <button
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
                           onClick={() => {
@@ -240,13 +241,11 @@ export default function Inventario() {
         data={filteredData}
       />
 
-      {/* Modals */}
       <EditFarmacoModal
         open={modalEditar.open}
         onClose={() => setModalEditar({ open: false })}
         initialData={modalEditar.data}
         onSave={() => {
-          // lógica para guardar cambios
         }}
       />
       <AjustarStockModal
@@ -254,7 +253,6 @@ export default function Inventario() {
         onClose={() => setModalAjuste({ open: false })}
         farmaco={modalAjuste.data?.nombre || ""}
         onConfirm={() => {
-          // lógica para confirmar ajuste
         }}
       />
       <HistorialFarmacoModal
@@ -262,10 +260,17 @@ export default function Inventario() {
         onClose={() => setModalHistorial({ open: false })}
         farmaco={modalHistorial.data?.nombre || ""}
         historial={[
-          // Aquí puedes pasar el historial real del fármaco
           { fecha: "2024-06-01", entrada: 10, salida: null, total: 110 },
           { fecha: "2024-06-02", entrada: null, salida: 5, total: 105 },
         ]}
+      />
+      <RegistrarFarmacoModal
+        open={modalRegistrar}
+        onClose={() => setModalRegistrar(false)}
+        onRegistrar={() => {
+          // lógica para registrar el fármaco
+          setModalRegistrar(false)
+        }}
       />
     </div>
   )

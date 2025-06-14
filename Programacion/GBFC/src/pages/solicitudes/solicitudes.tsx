@@ -1,68 +1,46 @@
-import { useState, useRef } from "react"
-import { Eye, Plus, Filter, Download, MoreVertical } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState } from "react"
+import { Eye, Plus, Filter, Download } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
+import { DetalleSolicitudModal } from "../../components/modals/detalle_solicitud"
 
 const requestsData = [
   {
-    id: "SOL001",
+    id: "SOL-2025-001",
     farmacia: "Farmacia Central",
-    fecha: "2024-01-15",
+    fechaCreacion: "13/06/2025",
+    estado: "Aprobada",
     prioridad: "Alta",
-    estado: "Pendiente",
+    farmacos: [
+      { farmaco: "Paracetamol 500mg", cantidadSolicitada: 56, cantidadAprobada: null, estado: "Pendiente" },
+      { farmaco: "Omeprazol 20mg", cantidadSolicitada: 79, cantidadAprobada: null, estado: "Pendiente" },
+      { farmaco: "Diazepam 10mg", cantidadSolicitada: 91, cantidadAprobada: null, estado: "Pendiente" },
+      { farmaco: "Ibuprofeno 400mg", cantidadSolicitada: 73, cantidadAprobada: null, estado: "Pendiente" },
+    ]
   },
   {
-    id: "SOL002",
+    id: "SOL-2025-002",
     farmacia: "Farmacia Urgencias",
-    fecha: "2024-01-14",
+    fechaCreacion: "12/06/2025",
+    estado: "Pendiente",
     prioridad: "Media",
-    estado: "En proceso",
-  },
-  {
-    id: "SOL003",
-    farmacia: "Farmacia Pediatría",
-    fecha: "2024-01-13",
-    prioridad: "Baja",
-    estado: "Completada",
+    farmacos: [
+      { farmaco: "Amoxicilina 500mg", cantidadSolicitada: 40, cantidadAprobada: null, estado: "Pendiente" },
+    ]
   },
 ]
 
 const categories = [
   "Todas",
-  "Pendientes",
-  "Completadas",
+  "Pendiente",
+  "Completada",
 ]
 
 export default function Solicitudes() {
   const [selectedCategory, setSelectedCategory] = useState("Todas")
   const [search, setSearch] = useState("")
-  const [openMenu, setOpenMenu] = useState<string | null>(null)
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
-  const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
-
-  const getPriorityColor = (prioridad: string) => {
-    switch (prioridad) {
-      case "Alta":
-        return "destructive"
-      case "Media":
-        return "warning"
-      case "Baja":
-        return "success"
-    }
-  }
-
-  const getStatusColor = (estado: string) => {
-    switch (estado) {
-      case "Completada":
-        return "success"
-      case "En proceso":
-        return "warning"
-      case "Pendiente":
-        return "destructive"
-    }
-  }
+  const [modalDetalle, setModalDetalle] = useState<{ open: boolean; data?: any }>({ open: false })
 
   const filteredData = requestsData.filter(
     (item) =>
@@ -71,9 +49,30 @@ export default function Solicitudes() {
         item.farmacia.toLowerCase().includes(search.toLowerCase()))
   )
 
+  const getPriorityColor = (prioridad: string) => {
+    switch (prioridad) {
+      case "Alta":
+        return "destructive"
+      case "Media":
+        return "warning"
+      case "Baja":
+        return "secondary"
+    }
+  }
+
+  const getStatusColor = (estado: string) => {
+    switch (estado) {
+      case "Aprobada":
+        return "success"
+      case "Pendiente":
+        return "destructive"
+      case "Completada":
+        return "warning"
+    }
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto px-2 py-6">
-      {/* Título y acciones */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Solicitudes</h1>
@@ -91,7 +90,6 @@ export default function Solicitudes() {
         </div>
       </div>
 
-      {/* Filtros y búsqueda */}
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
         <div className="flex flex-1 gap-1 flex-wrap">
           {categories.map((filter) => (
@@ -125,12 +123,11 @@ export default function Solicitudes() {
         </div>
       </div>
 
-      {/* Tabla */}
       <TableContainer
         columns={[
           { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span> },
           { header: "Farmacia", render: item => item.farmacia },
-          { header: "Fecha", render: item => item.fecha },
+          { header: "Fecha", render: item => item.fechaCreacion },
           {
             header: "Prioridad",
             render: item => (
@@ -150,63 +147,36 @@ export default function Solicitudes() {
           {
             header: "Acciones",
             render: item => (
-              <div className="flex items-center">
-                <Button
-                  ref={el => { buttonRefs.current[item.id] = el }}
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 p-0"
-                  onClick={() => {
-                    const rect = buttonRefs.current[item.id]?.getBoundingClientRect()
-                    setOpenMenu(openMenu === item.id ? null : item.id)
-                    setMenuPosition(
-                      rect
-                        ? {
-                            top: rect.bottom + window.scrollY,
-                            left: Math.min(rect.left, window.innerWidth - 220),
-                          }
-                        : null
-                    )
-                  }}
-                  aria-label="Acciones"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-                <AnimatePresence>
-                  {openMenu === item.id && menuPosition && (
-                    <>
-                      {/* Backdrop para cerrar el menú al hacer clic fuera */}
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setOpenMenu(null)}
-                        aria-hidden="true"
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed bg-white border rounded-xl shadow-lg z-50 min-w-[200px] py-2"
-                        style={{
-                          top: menuPosition.top,
-                          left: menuPosition.left,
-                        }}
-                      >
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => setOpenMenu(null)}
-                        >
-                          <Eye className="h-4 w-4" /> Ver detalles
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 p-0"
+                onClick={() => setModalDetalle({ open: true, data: item })}
+                aria-label="Ver detalles"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
             ),
           },
         ]}
         data={filteredData}
+      />
+
+      <DetalleSolicitudModal
+        open={modalDetalle.open}
+        onClose={() => setModalDetalle({ open: false })}
+        solicitud={modalDetalle.data || {
+          id: "",
+          farmacia: "",
+          fechaCreacion: "",
+          estado: "",
+          prioridad: "",
+          farmacos: [],
+        }}
+        onSave={solicitudActualizada => {
+          // Lógica para guardar cambios
+          setModalDetalle({ open: false })
+        }}
       />
     </div>
   )

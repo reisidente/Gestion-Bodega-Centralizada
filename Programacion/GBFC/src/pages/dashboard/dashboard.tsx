@@ -81,7 +81,6 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Header */}
         <motion.div
           className="mb-6"
           initial={{ opacity: 0, y: -10 }}
@@ -92,7 +91,6 @@ export default function Dashboard() {
           <p className="text-gray-600">Resumen general del sistema farmacéutico</p>
         </motion.div>
 
-        {/* MÉTRICAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {metrics.map((metric, index) => (
             <motion.div
@@ -118,10 +116,8 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* ACTIVIDAD RECIENTE */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            {/* Puedes agregar más contenido aquí si lo necesitas */}
           </div>
           <div>
             <motion.div

@@ -3,6 +3,7 @@ import { Filter, Download, Settings } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
+import { ConfigAlertasModal } from "../../components/modals/configurar_alertas"
 
 const alertasData = [
   {
@@ -37,6 +38,7 @@ const categories = [
 export default function Alertas() {
   const [SelectedCategory, setSelectedCategory] = useState("Todas")
   const [search, setSearch] = useState("")
+  const [modalConfig, setModalConfig] = useState(false)
 
   const getNivelColor = (nivel: string) => {
     switch (nivel) {
@@ -82,7 +84,10 @@ export default function Alertas() {
             <Download className="h-5 w-5" />
             Exportar
           </Button>
-          <Button variant="outline" className="flex items-center gap-2 font-medium">
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalConfig(true)}
+          >
             <Settings className="h-5 w-5" />
             Configurar alertas
           </Button>
@@ -147,6 +152,12 @@ export default function Alertas() {
           },
         ]}
         data={filteredData}
+      />
+
+      <ConfigAlertasModal
+        open={modalConfig}
+        onClose={() => setModalConfig(false)}
+        onSave={() => setModalConfig(false)}
       />
     </div>
   )
