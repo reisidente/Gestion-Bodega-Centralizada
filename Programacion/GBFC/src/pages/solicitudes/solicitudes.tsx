@@ -1,9 +1,11 @@
 import { useState } from "react"
-import { Eye, Plus, Filter, Download } from "lucide-react"
+import { Eye, Plus, Filter } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
 import { DetalleSolicitudModal } from "../../components/modals/detalle_solicitud"
+import { OrdenDespachoModal } from "../../components/modals/orden_despacho"
+import { OrdenCompraModal } from "../../components/modals/orden_compra"
 
 const requestsData = [
   {
@@ -41,6 +43,8 @@ export default function Solicitudes() {
   const [selectedCategory, setSelectedCategory] = useState("Todas")
   const [search, setSearch] = useState("")
   const [modalDetalle, setModalDetalle] = useState<{ open: boolean; data?: any }>({ open: false })
+  const [modalOrdenDespacho, setModalOrdenDespacho] = useState(false)
+  const [modalOrdenCompra, setModalOrdenCompra] = useState(false)
 
   const filteredData = requestsData.filter(
     (item) =>
@@ -79,11 +83,17 @@ export default function Solicitudes() {
           <p className="text-gray-500 text-lg mt-1">Gestión de solicitudes de farmacia</p>
         </div>
         <div className="flex gap-2 mt-2 md:mt-0">
-          <Button variant="outline" className="flex items-center gap-2 font-medium">
-            <Download className="h-5 w-5" />
-            Exportar
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalOrdenDespacho(true)}
+          >
+            <Plus className="h-5 w-5" />
+            Nueva Orden
           </Button>
-          <Button className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white">
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalOrdenCompra(true)}
+          >
             <Plus className="h-5 w-5" />
             Nueva Solicitud
           </Button>
@@ -174,8 +184,25 @@ export default function Solicitudes() {
           farmacos: [],
         }}
         onSave={solicitudActualizada => {
-          // Lógica para guardar cambios
           setModalDetalle({ open: false })
+        }}
+      />
+
+      <OrdenDespachoModal
+        open={modalOrdenDespacho}
+        onClose={() => setModalOrdenDespacho(false)}
+        onCrear={data => {
+          // lógica para crear orden de despacho
+          setModalOrdenDespacho(false)
+        }}
+      />
+
+      <OrdenCompraModal
+        open={modalOrdenCompra}
+        onClose={() => setModalOrdenCompra(false)}
+        onEnviar={data => {
+          // lógica para enviar orden de compra
+          setModalOrdenCompra(false)
         }}
       />
     </div>

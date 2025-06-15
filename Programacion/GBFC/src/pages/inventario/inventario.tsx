@@ -66,8 +66,6 @@ export default function Inventario() {
         return "destructive"
       case "Proximo a vencer":
         return "warning"
-      default:
-        return "secondary"
     }
   }
 

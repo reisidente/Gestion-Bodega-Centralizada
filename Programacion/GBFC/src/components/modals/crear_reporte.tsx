@@ -1,23 +1,39 @@
 import { useState } from "react"
 import { BaseModal } from "./base"
 
-interface EditarReporteModalProps {
-  open: boolean
-  onClose: () => void
-  initialData: {
-    titulo?: string
-    tipo?: "Stock Bajo" | "Vencimientos" | "Inventario" | "Movimientos"
-    formato?: string
-    frecuencia?: string
-    descripcion?: string
-    parametros?: any
-  }
-  onSave?: (data: any) => void
+interface ParametrosStockBajo {
+  ordenarPor?: string
+}
+interface ParametrosVencimientos {
+  dias?: string | number
+  ordenarPor?: string
+}
+interface ParametrosInventario {
+  incluirStockCero?: boolean
+  ordenarPor?: string
+}
+interface ParametrosMovimientos {
+  fechaInicio?: string
+  fechaFin?: string
+  farmacia?: string
 }
 
-const tipos = ["Stock Bajo", "Vencimientos", "Inventario", "Movimientos"]
+type Parametros =
+  | ParametrosStockBajo
+  | ParametrosVencimientos
+  | ParametrosInventario
+  | ParametrosMovimientos
+  | Record<string, any>
+
+interface CrearReporteModalProps {
+  open: boolean
+  onClose: () => void
+  onCreate?: (data: any) => void
+}
+
 const formatos = ["PDF"]
 const frecuencias = ["Única", "Diaria", "Semanal", "Mensual"]
+const tipos = ["Stock Bajo", "Vencimientos", "Inventario", "Movimientos"]
 
 const ordenStockBajo = [
   "Porcentaje de stock",
@@ -27,30 +43,25 @@ const ordenStockBajo = [
 ]
 const ordenVencimientos = ["Días restantes"]
 const ordenInventario = ["Categoría"]
-const ordenMovimientos = ["Fecha"]
 
-const getSafeInitialData = (data: any) => ({
-  titulo: data.titulo || "",
-  tipo: tipos.includes(data.tipo) ? data.tipo : "Stock Bajo",
-  formato: formatos.includes(data.formato) ? data.formato : "PDF",
-  frecuencia: frecuencias.includes(data.frecuencia) ? data.frecuencia : "Única",
-  descripcion: data.descripcion || "",
-  parametros: data.parametros || {},
-})
+const initialState = {
+  titulo: "",
+  tipo: "Stock Bajo",
+  formato: "PDF",
+  frecuencia: "Única",
+  descripcion: "",
+  parametros: {} as Parametros,
+}
 
-export function EditarReporteModal({
-  open,
-  onClose,
-  initialData,
-  onSave,
-}: EditarReporteModalProps) {
-  const [data, setData] = useState(getSafeInitialData(initialData))
+export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModalProps) {
+  const [data, setData] = useState(initialState)
 
-  // Handlers
   const handleChange = (field: string, value: any) => {
     setData(prev => ({
       ...prev,
       [field]: value,
+      // Reset parámetros si cambia el tipo
+      ...(field === "tipo" ? { parametros: {} } : {}),
     }))
   }
 
@@ -64,27 +75,27 @@ export function EditarReporteModal({
     }))
   }
 
-  // Renderiza los parámetros según el tipo de reporte
   const renderParametros = () => {
     switch (data.tipo) {
-      case "Stock Bajo":
+      case "Stock Bajo": {
+        const parametros = data.parametros as ParametrosStockBajo
         return (
-          <>
-            <div className="mb-4">
-              <label className="block font-medium mb-1">Ordenar por</label>
-              <select
-                className="w-full border rounded-md px-3 py-2"
-                value={data.parametros.ordenarPor || ""}
-                onChange={e => handleParametro("ordenarPor", e.target.value)}
-              >
-                {ordenStockBajo.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            </div>
-          </>
+          <div className="mb-4">
+            <label className="block font-medium mb-1">Ordenar por</label>
+            <select
+              className="w-full border rounded-md px-3 py-2"
+              value={parametros.ordenarPor || ""}
+              onChange={e => handleParametro("ordenarPor", e.target.value)}
+            >
+              {ordenStockBajo.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
         )
-      case "Vencimientos":
+      }
+      case "Vencimientos": {
+        const parametros = data.parametros as ParametrosVencimientos
         return (
           <>
             <div className="mb-4">
@@ -92,7 +103,7 @@ export function EditarReporteModal({
               <input
                 type="number"
                 className="w-full border rounded-md px-3 py-2"
-                value={data.parametros.dias || ""}
+                value={parametros.dias || ""}
                 onChange={e => handleParametro("dias", e.target.value)}
                 placeholder="Ej: 90"
               />
@@ -104,7 +115,7 @@ export function EditarReporteModal({
               <label className="block font-medium mb-1">Ordenar por</label>
               <select
                 className="w-full border rounded-md px-3 py-2"
-                value={data.parametros.ordenarPor || ""}
+                value={parametros.ordenarPor || ""}
                 onChange={e => handleParametro("ordenarPor", e.target.value)}
               >
                 {ordenVencimientos.map(opt => (
@@ -114,14 +125,16 @@ export function EditarReporteModal({
             </div>
           </>
         )
-      case "Inventario":
+      }
+      case "Inventario": {
+        const parametros = data.parametros as ParametrosInventario
         return (
           <>
             <div className="mb-4">
               <label className="inline-flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={!!data.parametros.incluirStockCero}
+                  checked={!!parametros.incluirStockCero}
                   onChange={e => handleParametro("incluirStockCero", e.target.checked)}
                 />
                 Incluir productos con stock cero
@@ -134,7 +147,7 @@ export function EditarReporteModal({
               <label className="block font-medium mb-1">Ordenar por</label>
               <select
                 className="w-full border rounded-md px-3 py-2"
-                value={data.parametros.ordenarPor || ""}
+                value={parametros.ordenarPor || ""}
                 onChange={e => handleParametro("ordenarPor", e.target.value)}
               >
                 {ordenInventario.map(opt => (
@@ -142,10 +155,11 @@ export function EditarReporteModal({
                 ))}
               </select>
             </div>
-            {/* Aquí puedes agregar selección de categorías si lo necesitas */}
           </>
         )
-      case "Movimientos":
+      }
+      case "Movimientos": {
+        const parametros = data.parametros as ParametrosMovimientos
         return (
           <>
             <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -154,7 +168,7 @@ export function EditarReporteModal({
                 <input
                   type="date"
                   className="w-full border rounded-md px-3 py-2"
-                  value={data.parametros.fechaInicio || ""}
+                  value={parametros.fechaInicio || ""}
                   onChange={e => handleParametro("fechaInicio", e.target.value)}
                 />
               </div>
@@ -163,7 +177,7 @@ export function EditarReporteModal({
                 <input
                   type="date"
                   className="w-full border rounded-md px-3 py-2"
-                  value={data.parametros.fechaFin || ""}
+                  value={parametros.fechaFin || ""}
                   onChange={e => handleParametro("fechaFin", e.target.value)}
                 />
               </div>
@@ -172,7 +186,7 @@ export function EditarReporteModal({
               <label className="block font-medium mb-1">Farmacia</label>
               <select
                 className="w-full border rounded-md px-3 py-2"
-                value={data.parametros.farmacia || ""}
+                value={parametros.farmacia || ""}
                 onChange={e => handleParametro("farmacia", e.target.value)}
               >
                 <option value="">Todas las farmacias</option>
@@ -184,6 +198,7 @@ export function EditarReporteModal({
             </div>
           </>
         )
+      }
       default:
         return null
     }
@@ -192,8 +207,8 @@ export function EditarReporteModal({
   return (
     <BaseModal open={open} onClose={onClose} widthClass="max-w-3xl">
       <div className="mb-8 border rounded-md p-6 bg-white">
-        <h2 className="font-semibold text-xl mb-1">Información del Reporte</h2>
-        <p className="text-gray-500 mb-6">Modifique los datos básicos del reporte</p>
+        <h2 className="font-semibold text-xl mb-1">Crear Nuevo Reporte</h2>
+        <p className="text-gray-500 mb-6">Complete los datos básicos del reporte</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block font-medium mb-1">Título</label>
@@ -269,9 +284,9 @@ export function EditarReporteModal({
         </button>
         <button
           className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
-          onClick={() => onSave?.(data)}
+          onClick={() => onCreate?.(data)}
         >
-          Guardar cambios
+          Crear reporte
         </button>
       </div>
     </BaseModal>

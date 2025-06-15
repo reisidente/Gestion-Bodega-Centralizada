@@ -6,6 +6,7 @@ import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
 import { VerReporteModal } from "../../components/modals/ver_reporte"
 import { EditarReporteModal } from "../../components/modals/editar_reporte"
+import { CrearReporteModal } from "../../components/modals/crear_reporte"
 
 const reportesData = [
   {
@@ -62,6 +63,7 @@ export default function Reportes() {
   const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
   const [modalVer, setModalVer] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false })
+  const [modalCrear, setModalCrear] = useState(false)
 
   const filteredData = reportesData.filter(
     (item) =>
@@ -83,9 +85,12 @@ export default function Reportes() {
             <Download className="h-5 w-5" />
             Exportar
           </Button>
-          <Button className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white">
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalCrear(true)}
+          >
             <Settings className="h-5 w-5" />
-            Generar reporte
+            Nuevo reporte
           </Button>
         </div>
       </div>
@@ -227,10 +232,24 @@ export default function Reportes() {
       <EditarReporteModal
         open={modalEditar.open}
         onClose={() => setModalEditar({ open: false })}
-        initialData={modalEditar.data || {}}
+        initialData={{
+          ...modalEditar.data,
+          tipo: typeof modalEditar.data?.tipo === "string"
+            ? (modalEditar.data.tipo.charAt(0).toUpperCase() + modalEditar.data.tipo.slice(1).toLowerCase())
+            : "Stock Bajo",
+        }}
         onSave={_data => {
           // lógica para guardar cambios
           setModalEditar({ open: false })
+        }}
+      />
+
+      <CrearReporteModal
+        open={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onCreate={data => {
+          // Aquí puedes agregar la lógica para crear el reporte (ej: llamada a API o actualizar estado)
+          setModalCrear(false)
         }}
       />
     </div>

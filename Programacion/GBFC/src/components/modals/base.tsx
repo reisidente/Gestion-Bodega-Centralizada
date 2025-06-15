@@ -14,7 +14,7 @@ export function BaseModal({ open, onClose, children, widthClass = "max-w-xl" }: 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div
         className={`relative bg-white rounded-xl shadow-xl w-full ${widthClass}`}
-        style={{ maxHeight: "90vh" }}
+        style={{ maxHeight: "90vh", overflow: "auto" }}
       >
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl"
