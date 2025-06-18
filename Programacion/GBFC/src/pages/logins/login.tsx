@@ -1,5 +1,6 @@
 import type React from "react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Plus } from "lucide-react"
 import { Button } from "../../components/ui/button"
@@ -7,7 +8,8 @@ import { Card, CardContent, CardHeader } from "../../components/ui/card"
 import { FormField } from "../../components/ui/form/form-field"
 import { SmoothBackground } from "../../components/animations/smooth-bachground"
 import { LoadingSpinner } from "../../components/animations/loading-spinner"
-import { validateRUT, formatRUT } from "../../utils/rut-validor"
+import { validateRUT, formatRUT, parseRUT } from "../../utils/rut-validor"
+import { supabase } from "../../libs/supabase"
 
 export default function Component() {
   const [rut, setRut] = useState("")
@@ -15,6 +17,7 @@ export default function Component() {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<{ rut?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
 
   const handleRutChange = (value: string) => {
     const formatted = formatRUT(value)
@@ -52,10 +55,46 @@ export default function Component() {
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true)
-      setTimeout(() => {
+      // --- INICIO FLUJO VALIDACIÓN EN SUPABASE ---
+      const parsed = parseRUT(rut)
+      if (!parsed) {
+        setErrors({ rut: "RUT inválido" })
         setIsLoading(false)
-        alert("¡Acceso concedido!")
-      }, 2000)
+        return
+      }
+      // Buscar usuario por rut, dv y contraseña
+      console.log("Login params:", parsed.rut, parsed.dv, password);
+      const { data: usuario, error } = await supabase
+        .from('usuario')
+        .select('uid, email')
+        .eq('rut', parsed.rut)
+        .eq('d_verificador', parsed.dv)
+        .eq('contraseña', password) // ¡En producción usa hash!
+        .single()
+      console.log("Login params:", parsed.rut, parsed.dv, password, typeof parsed.rut, typeof parsed.dv);
+      if (error || !usuario) {
+        setErrors({ rut: "RUT o contraseña incorrectos. Si el problema persiste, contacte al administrador." })
+        setIsLoading(false)
+        return
+      }
+      if (!usuario.uid) {
+        setErrors({ rut: "El usuario no está asociado a un UID válido. Contacte al administrador." })
+        setIsLoading(false)
+        return
+      }
+      // Autenticar con Supabase Auth usando email y contraseña
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: usuario.email,
+        password,
+      })
+      if (authError) {
+        setErrors({ rut: "Error de autenticación: la contraseña no coincide con la registrada." })
+        setIsLoading(false)
+        return
+      }
+      setIsLoading(false)
+      navigate("/dashboard")
+      // --- FIN FLUJO VALIDACIÓN EN SUPABASE ---
     }
   }
 
@@ -134,9 +173,6 @@ export default function Component() {
                 transition={{ delay: 0.6, duration: 0.4 }}
                 className="text-center pt-2"
               >
-                <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors duration-200">
-                  ¿Olvidaste tu contraseña?
-                </button>
               </motion.div>
             </CardContent>
           </Card>

@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X } from "lucide-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
+import { useIsAdmin } from "../../hooks/useIsAdmin"
 
 interface SidebarProps {
   activeSection: string
@@ -23,6 +24,7 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const navigate = useNavigate()
+  const { isAdmin } = useIsAdmin()
 
   return (
     <div className="min-h-screen flex">
@@ -92,6 +94,21 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
               {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
             </motion.button>
           ))}
+          {/* Enlace solo visible para administradores */}
+          {isAdmin && (
+            <motion.button
+              onClick={() => navigate("/nuevo-usuario")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Plus className="h-4 w-4 flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Nuevo Usuario</span>}
+            </motion.button>
+          )}
         </nav>
       </motion.div>
       <main className="flex-1 ml-16 md:ml-64 transition-all duration-300">{children}</main>

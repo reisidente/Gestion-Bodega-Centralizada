@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Eye, Plus, Filter } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
@@ -6,38 +6,7 @@ import { TableContainer } from "../../components/ui/table"
 import { DetalleSolicitudModal } from "../../components/modals/detalle_solicitud"
 import { OrdenDespachoModal } from "../../components/modals/orden_despacho"
 import { OrdenCompraModal } from "../../components/modals/orden_compra"
-
-const requestsData = [
-  {
-    id: "SOL-2025-001",
-    farmacia: "Farmacia Central",
-    fechaCreacion: "13/06/2025",
-    estado: "Aprobada",
-    prioridad: "Alta",
-    farmacos: [
-      { farmaco: "Paracetamol 500mg", cantidadSolicitada: 56, cantidadAprobada: null, estado: "Pendiente" },
-      { farmaco: "Omeprazol 20mg", cantidadSolicitada: 79, cantidadAprobada: null, estado: "Pendiente" },
-      { farmaco: "Diazepam 10mg", cantidadSolicitada: 91, cantidadAprobada: null, estado: "Pendiente" },
-      { farmaco: "Ibuprofeno 400mg", cantidadSolicitada: 73, cantidadAprobada: null, estado: "Pendiente" },
-    ]
-  },
-  {
-    id: "SOL-2025-002",
-    farmacia: "Farmacia Urgencias",
-    fechaCreacion: "12/06/2025",
-    estado: "Pendiente",
-    prioridad: "Media",
-    farmacos: [
-      { farmaco: "Amoxicilina 500mg", cantidadSolicitada: 40, cantidadAprobada: null, estado: "Pendiente" },
-    ]
-  },
-]
-
-const categories = [
-  "Todas",
-  "Pendiente",
-  "Completada",
-]
+import { supabase } from "../../libs/supabase"
 
 export default function Solicitudes() {
   const [selectedCategory, setSelectedCategory] = useState("Todas")
@@ -45,6 +14,42 @@ export default function Solicitudes() {
   const [modalDetalle, setModalDetalle] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalOrdenDespacho, setModalOrdenDespacho] = useState(false)
   const [modalOrdenCompra, setModalOrdenCompra] = useState(false)
+  const [solicitudes, setSolicitudes] = useState<any[]>([])
+  const [detalleSolicitudes, setDetalleSolicitudes] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchSolicitudes = async () => {
+      // Traer solicitudes y detalles relacionados
+      const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+      const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
+      setSolicitudes(solicitudesData || [])
+      setDetalleSolicitudes(detallesData || [])
+    }
+    fetchSolicitudes()
+  }, [])
+
+  // Unir solicitudes con sus detalles y fármacos
+  const requestsData = solicitudes.map(sol => {
+    const detalles = detalleSolicitudes.filter(d => d.solicitud_id_sol === sol.id_sol)
+    return {
+      id: sol.cod_sol,
+      farmacia: sol.farmacia?.nom_farma || "",
+      fechaCreacion: sol.fec_creacion,
+      estado: sol.estado,
+      prioridad: sol.prioridad,
+      farmacos: detalles.map(d => ({
+        farmaco: d.farmaco || "-", // Puedes hacer join con farmaco si lo necesitas
+        cantidadSolicitada: d.cant_despacho,
+        cantidadAprobada: null,
+        estado: d.estado_fmc,
+      }))
+    }
+  })
+
+  const categories = [
+    "Todas",
+    ...Array.from(new Set(solicitudes.map(s => s.estado)))
+  ]
 
   const filteredData = requestsData.filter(
     (item) =>
@@ -191,18 +196,60 @@ export default function Solicitudes() {
       <OrdenDespachoModal
         open={modalOrdenDespacho}
         onClose={() => setModalOrdenDespacho(false)}
-        onCrear={data => {
-          // lógica para crear orden de despacho
+        onCrear={async (form) => {
+          // Insertar solicitud en Supabase
+          const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
+            {
+              cod_sol: form.numero,
+              estado: "Pendiente",
+              prioridad: form.prioridad,
+              cant_sol: 1, // Puedes ajustar según los medicamentos
+              fec_creacion: form.fecha,
+              fec_cierre: null,
+              farmacia_id_farmacia: null, // Debes buscar el id de la farmacia por nombre si lo necesitas
+            }
+          ]).select().single()
+          if (error || !nuevaSolicitud) {
+            alert("Error al crear solicitud")
+            return
+          }
+          // Puedes insertar detalles de solicitud aquí si lo necesitas
           setModalOrdenDespacho(false)
+          // Refrescar solicitudes
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
+          setSolicitudes(solicitudesData || [])
+          setDetalleSolicitudes(detallesData || [])
         }}
       />
 
       <OrdenCompraModal
         open={modalOrdenCompra}
         onClose={() => setModalOrdenCompra(false)}
-        onEnviar={data => {
-          // lógica para enviar orden de compra
+        onEnviar={async (form) => {
+          // Insertar solicitud de compra en Supabase
+          const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
+            {
+              cod_sol: form.numero,
+              estado: "Pendiente",
+              prioridad: "Media", // Puedes ajustar según el formulario
+              cant_sol: 1, // Puedes ajustar según el medicamento
+              fec_creacion: form.fecha,
+              fec_cierre: null,
+              farmacia_id_farmacia: null, // Debes buscar el id de la farmacia por nombre si lo necesitas
+            }
+          ]).select().single()
+          if (error || !nuevaSolicitud) {
+            alert("Error al crear solicitud de compra")
+            return
+          }
+          // Puedes insertar detalles de solicitud aquí si lo necesitas
           setModalOrdenCompra(false)
+          // Refrescar solicitudes
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
+          setSolicitudes(solicitudesData || [])
+          setDetalleSolicitudes(detallesData || [])
         }}
       />
     </div>

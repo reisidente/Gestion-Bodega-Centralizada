@@ -7,6 +7,7 @@ import Solicitudes from './pages/solicitudes/solicitudes'
 import Alertas from './pages/alertas/alertas'
 import Reportes from './pages/reportes/reportes'
 import { Sidebar } from './components/loyout/sliderbar'
+import NuevoUsuario from './pages/logins/nuevo-usuario'
 
 
 <Route path="/" element={<Login />} />
@@ -77,6 +78,14 @@ function App() {
           element={
             <Sidebar activeSection="reportes">
               <Reportes />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/nuevo-usuario"
+          element={
+            <Sidebar activeSection="usuarios">
+              <NuevoUsuario />
             </Sidebar>
           }
         />

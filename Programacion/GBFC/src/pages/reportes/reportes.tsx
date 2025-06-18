@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Filter, Download, Settings, MoreVertical, Eye, Pencil } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "../../components/ui/button"
@@ -7,53 +7,7 @@ import { TableContainer } from "../../components/ui/table"
 import { VerReporteModal } from "../../components/modals/ver_reporte"
 import { EditarReporteModal } from "../../components/modals/editar_reporte"
 import { CrearReporteModal } from "../../components/modals/crear_reporte"
-
-const reportesData = [
-  {
-    nombre: "Inventario General",
-    tipo: "Inventario",
-    fecha: "2025-06-01",
-    creadoPor: "Administrador",
-    formato: "PDF",
-    descripcion: "Reporte completo del inventario actual con desglose por categorías",
-    parametros: { incluirStockCero: true, ordenarPor: "Categoría" },
-    columnas: ["Fármaco", "Lote", "Stock", "Vencimiento"],
-    datos: [
-      { "Fármaco": "Paracetamol", "Lote": "PAR001", "Stock": 100, "Vencimiento": "12/2025" },
-      { "Fármaco": "Ibuprofeno", "Lote": "IBU003", "Stock": 50, "Vencimiento": "11/2025" },
-    ],
-  },
-  {
-    nombre: "Próximos Vencimientos",
-    tipo: "Vencimientos",
-    fecha: "2025-06-01",
-    creadoPor: "Administrador",
-    formato: "PDF",
-    descripcion: "Fármacos que vencerán en los próximos 90 días ordenados por fecha",
-    parametros: { dias: 90, ordenarPor: "Días restantes" },
-    columnas: ["Fármaco", "Lote", "Vencimiento", "Días restantes"],
-    datos: [
-      { "Fármaco": "Paracetamol", "Lote": "PAR001", "Vencimiento": "12/2025", "Días restantes": 80 },
-      { "Fármaco": "Ibuprofeno", "Lote": "IBU003", "Vencimiento": "11/2025", "Días restantes": 60 },
-    ],
-  },
-  {
-    nombre: "Stock Bajo",
-    tipo: "Stock bajo",
-    fecha: "2025-06-01",
-    creadoPor: "Administrador",
-    formato: "PDF",
-    descripcion: "Fármacos con stock por debajo del mínimo requerido",
-    parametros: { ordenarPor: "Déficit (unidades faltantes)" },
-    columnas: ["Fármaco", "Stock actual", "Stock mínimo", "Déficit"],
-    datos: [
-      { "Fármaco": "Paracetamol", "Stock actual": 10, "Stock mínimo": 50, "Déficit": 40 },
-      { "Fármaco": "Ibuprofeno", "Stock actual": 5, "Stock mínimo": 30, "Déficit": 25 },
-    ],
-  },
-]
-
-const filtros = ["Todos", "Inventario", "Vencimientos", "Stock bajo"]
+import { supabase } from "../../libs/supabase"
 
 export default function Reportes() {
   const [filtroActivo, setFiltroActivo] = useState("Todos")
@@ -64,12 +18,26 @@ export default function Reportes() {
   const [modalVer, setModalVer] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalCrear, setModalCrear] = useState(false)
+  const [reportes, setReportes] = useState<any[]>([])
 
-  const filteredData = reportesData.filter(
+  useEffect(() => {
+    const fetchReportes = async () => {
+      const { data: reportesData } = await supabase.from("reporte").select("*")
+      setReportes(reportesData || [])
+    }
+    fetchReportes()
+  }, [])
+
+  const filtros = [
+    "Todos",
+    ...Array.from(new Set(reportes.map(r => r.tipo)))
+  ]
+
+  const filteredData = reportes.filter(
     (item) =>
       (filtroActivo === "Todos" || item.tipo === filtroActivo) &&
-      (item.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        item.tipo.toLowerCase().includes(search.toLowerCase()))
+      (item.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+        item.tipo?.toLowerCase().includes(search.toLowerCase()))
   )
 
   return (
@@ -238,18 +206,48 @@ export default function Reportes() {
             ? (modalEditar.data.tipo.charAt(0).toUpperCase() + modalEditar.data.tipo.slice(1).toLowerCase())
             : "Stock Bajo",
         }}
-        onSave={_data => {
-          // lógica para guardar cambios
+        onSave={async (data) => {
+          if (!modalEditar.data?.id) return;
+          await supabase.from("reporte").update({
+            nombre: data.titulo,
+            tipo: data.tipo,
+            formato: data.formato,
+            frecuencia: data.frecuencia,
+            descripcion: data.descripcion,
+            parametros: data.parametros,
+          }).eq("id", modalEditar.data.id)
           setModalEditar({ open: false })
+          // Refrescar reportes
+          const { data: reportesData } = await supabase.from("reporte").select("*")
+          setReportes(reportesData || [])
         }}
       />
 
       <CrearReporteModal
         open={modalCrear}
         onClose={() => setModalCrear(false)}
-        onCreate={data => {
-          // Aquí puedes agregar la lógica para crear el reporte (ej: llamada a API o actualizar estado)
+        onCreate={async (data) => {
+          // Insertar reporte en Supabase
+          const { data: nuevoReporte, error } = await supabase.from("reporte").insert([
+            {
+              nombre: data.titulo,
+              tipo: data.tipo,
+              formato: data.formato,
+              frecuencia: data.frecuencia,
+              descripcion: data.descripcion,
+              parametros: data.parametros,
+              fecha: new Date().toISOString().slice(0, 10),
+              creadoPor: "Administrador", // Puedes ajustar según el usuario logueado
+            }
+          ])
+          if (error) {
+            alert("Error al crear reporte")
+            return
+          }
           setModalCrear(false)
+          // Refrescar reportes
+          const { data: reportesData } = await supabase.from("reporte").select("*")
+          setReportes(reportesData || [])
         }}
       />
     </div>
