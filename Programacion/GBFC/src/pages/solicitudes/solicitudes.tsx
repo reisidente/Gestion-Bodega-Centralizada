@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Eye, Plus, Filter } from "lucide-react"
+import { Eye, Plus } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
@@ -21,7 +21,10 @@ export default function Solicitudes() {
     const fetchSolicitudes = async () => {
       // Traer solicitudes y detalles relacionados
       const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
-      const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
+      // JOIN para traer el nombre del fármaco en cada detalle
+      const { data: detallesData } = await supabase
+        .from("detalle_solicitud")
+        .select("*, farmaco: id_farmaco (nombre)")
       setSolicitudes(solicitudesData || [])
       setDetalleSolicitudes(detallesData || [])
     }
@@ -32,13 +35,18 @@ export default function Solicitudes() {
   const requestsData = solicitudes.map(sol => {
     const detalles = detalleSolicitudes.filter(d => d.solicitud_id_sol === sol.id_sol)
     return {
-      id: sol.cod_sol,
+      id: sol.cod_sol, // Usar cod_sol como identificador principal
+      cod_sol: sol.cod_sol,
+      id_sol: sol.id_sol, // Solo si necesitas el id interno para joins
       farmacia: sol.farmacia?.nom_farma || "",
+      farmacia_id_farmacia: sol.farmacia?.id_farmacia || sol.farmacia_id_farmacia || "",
       fechaCreacion: sol.fec_creacion,
       estado: sol.estado,
       prioridad: sol.prioridad,
+      cantidad: sol.cant_sol,
       farmacos: detalles.map(d => ({
-        farmaco: d.farmaco || "-", // Puedes hacer join con farmaco si lo necesitas
+        id_detalle: d.id_detalle,
+        farmaco: d.farmaco?.nombre || "-",
         cantidadSolicitada: d.cant_despacho,
         cantidadAprobada: null,
         estado: d.estado_fmc,
@@ -93,14 +101,14 @@ export default function Solicitudes() {
             onClick={() => setModalOrdenDespacho(true)}
           >
             <Plus className="h-5 w-5" />
-            Nueva Orden
+            Nueva Solicitud
           </Button>
           <Button
             className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
             onClick={() => setModalOrdenCompra(true)}
           >
             <Plus className="h-5 w-5" />
-            Nueva Solicitud
+            Nueva Orden
           </Button>
         </div>
       </div>
@@ -119,13 +127,6 @@ export default function Solicitudes() {
               {filter}
             </Button>
           ))}
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 px-4 py-2 text-base font-medium"
-          >
-            <Filter className="h-5 w-5" />
-            Filtros
-          </Button>
         </div>
         <div className="flex-1 flex justify-end">
           <input
@@ -197,29 +198,31 @@ export default function Solicitudes() {
         open={modalOrdenDespacho}
         onClose={() => setModalOrdenDespacho(false)}
         onCrear={async (form) => {
-          // Insertar solicitud en Supabase
+          // Insertar solicitud en Supabase con los datos correctos
+          const { medicamentos, ...solicitudPayload } = form;
           const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
-            {
-              cod_sol: form.numero,
-              estado: "Pendiente",
-              prioridad: form.prioridad,
-              cant_sol: 1, // Puedes ajustar según los medicamentos
-              fec_creacion: form.fecha,
-              fec_cierre: null,
-              farmacia_id_farmacia: null, // Debes buscar el id de la farmacia por nombre si lo necesitas
-            }
-          ]).select().single()
+            solicitudPayload
+          ]).select().single();
           if (error || !nuevaSolicitud) {
-            alert("Error al crear solicitud")
-            return
+            alert("Error al crear solicitud");
+            return;
           }
-          // Puedes insertar detalles de solicitud aquí si lo necesitas
-          setModalOrdenDespacho(false)
+          // Insertar detalles de solicitud en detalle_solicitud
+          if (medicamentos && medicamentos.length > 0) {
+            const detalles = medicamentos.map((med: any) => ({
+              solicitud_id_sol: nuevaSolicitud.id_sol,
+              cant_despacho: med.cantidad, // cantidad solicitada
+              estado_fmc: 'Pendiente',
+              fec_despacho: null, // Se actualizará al despachar
+            }));
+            await supabase.from("detalle_solicitud").insert(detalles);
+          }
+          setModalOrdenDespacho(false);
           // Refrescar solicitudes
-          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
-          setSolicitudes(solicitudesData || [])
-          setDetalleSolicitudes(detallesData || [])
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*");
+          setSolicitudes(solicitudesData || []);
+          setDetalleSolicitudes(detallesData || []);
         }}
       />
 
@@ -227,29 +230,31 @@ export default function Solicitudes() {
         open={modalOrdenCompra}
         onClose={() => setModalOrdenCompra(false)}
         onEnviar={async (form) => {
-          // Insertar solicitud de compra en Supabase
+          // Insertar solicitud de compra en Supabase con los datos correctos
+          const { medicamentos, ...solicitudPayload } = form;
           const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
-            {
-              cod_sol: form.numero,
-              estado: "Pendiente",
-              prioridad: "Media", // Puedes ajustar según el formulario
-              cant_sol: 1, // Puedes ajustar según el medicamento
-              fec_creacion: form.fecha,
-              fec_cierre: null,
-              farmacia_id_farmacia: null, // Debes buscar el id de la farmacia por nombre si lo necesitas
-            }
-          ]).select().single()
+            solicitudPayload
+          ]).select().single();
           if (error || !nuevaSolicitud) {
-            alert("Error al crear solicitud de compra")
-            return
+            alert("Error al crear solicitud de compra");
+            return;
           }
-          // Puedes insertar detalles de solicitud aquí si lo necesitas
-          setModalOrdenCompra(false)
+          // Insertar detalles de solicitud en detalle_solicitud
+          if (medicamentos && medicamentos.length > 0) {
+            const detalles = medicamentos.map((med: any) => ({
+              solicitud_id_sol: nuevaSolicitud.id_sol,
+              cant_despacho: med.cantidad, // cantidad solicitada
+              estado_fmc: 'Pendiente',
+              fec_despacho: null, // Se actualizará al despachar
+            }));
+            await supabase.from("detalle_solicitud").insert(detalles);
+          }
+          setModalOrdenCompra(false);
           // Refrescar solicitudes
-          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*")
-          setSolicitudes(solicitudesData || [])
-          setDetalleSolicitudes(detallesData || [])
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*");
+          setSolicitudes(solicitudesData || []);
+          setDetalleSolicitudes(detallesData || []);
         }}
       />
     </div>

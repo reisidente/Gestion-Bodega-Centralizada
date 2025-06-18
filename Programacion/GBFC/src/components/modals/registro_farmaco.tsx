@@ -19,6 +19,8 @@ export function RegistrarFarmacoModal({
     codigo: "",
     unidad: "",
     total: "",
+    categoria: "",
+    precio: "",
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +60,16 @@ export function RegistrarFarmacoModal({
             />
           </div>
           <div>
+            <label className="block font-medium mb-1">Categoría</label>
+            <input
+              name="categoria"
+              value={form.categoria}
+              onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2"
+              required
+            />
+          </div>
+          <div>
             <label className="block font-medium mb-1">Lote</label>
             <input
               name="lote"
@@ -89,12 +101,24 @@ export function RegistrarFarmacoModal({
             />
           </div>
           <div>
-            <label className="block font-medium mb-1">Total</label>
+            <label className="block font-medium mb-1">Cantidad</label>
             <input
               name="total"
               type="number"
               min={0}
               value={form.total}
+              onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Precio (opcional)</label>
+            <input
+              name="precio"
+              type="number"
+              min={0}
+              value={form.precio}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
               required

@@ -13,6 +13,15 @@ interface AjustarStockModalProps {
   }) => void
 }
 
+const MOTIVO_OPTIONS = {
+  Entrada: ["Compra", "Corrección", "Otro"] as const,
+  Salida: ["Vencimiento", "Corrección", "Otro"] as const,
+}
+
+type MotivoEntrada = typeof MOTIVO_OPTIONS.Entrada[number]
+type MotivoSalida = typeof MOTIVO_OPTIONS.Salida[number]
+type Motivo = MotivoEntrada | MotivoSalida
+
 export function AjustarStockModal({
   open,
   onClose,
@@ -21,8 +30,14 @@ export function AjustarStockModal({
 }: AjustarStockModalProps) {
   const [tipo, setTipo] = useState<"Entrada" | "Salida">("Entrada")
   const [cantidad, setCantidad] = useState("1")
-  const [motivo, setMotivo] = useState("Compra")
+  const [motivo, setMotivo] = useState<Motivo>("Compra")
   const [observaciones, setObservaciones] = useState("")
+
+  // Update motivo when tipo changes to ensure a valid option is selected
+  const handleTipoChange = (newTipo: "Entrada" | "Salida") => {
+    setTipo(newTipo)
+    setMotivo(MOTIVO_OPTIONS[newTipo][0]) // Reset to first option of new tipo
+  }
 
   const handleConfirm = () => {
     onConfirm?.({
@@ -49,7 +64,7 @@ export function AjustarStockModal({
             <input
               type="radio"
               checked={tipo === "Entrada"}
-              onChange={() => setTipo("Entrada")}
+              onChange={() => handleTipoChange("Entrada")}
             />
             Entrada
           </label>
@@ -57,7 +72,7 @@ export function AjustarStockModal({
             <input
               type="radio"
               checked={tipo === "Salida"}
-              onChange={() => setTipo("Salida")}
+              onChange={() => handleTipoChange("Salida")}
             />
             Salida
           </label>
@@ -73,7 +88,8 @@ export function AjustarStockModal({
           onChange={e => setCantidad(e.target.value)}
         />
         <div className="text-gray-400 text-sm mt-1">
-          Cantidad de unidades a ingresar
+          Cantidad de unidades a{" "}
+          {tipo === "Entrada" ? "ingresar" : "retirar"}
         </div>
       </div>
       <div className="mb-4">
@@ -81,12 +97,13 @@ export function AjustarStockModal({
         <select
           className="w-full border rounded-md px-3 py-2"
           value={motivo}
-          onChange={e => setMotivo(e.target.value)}
+          onChange={e => setMotivo(e.target.value as Motivo)}
         >
-          <option value="Compra">Compra</option>
-          <option value="Ajuste manual">Correción</option>
-          <option value="Vencimiento">Vencimiento</option>
-          <option value="Otro">Otro</option>
+          {MOTIVO_OPTIONS[tipo].map(option => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
         </select>
       </div>
       <div className="mb-4">

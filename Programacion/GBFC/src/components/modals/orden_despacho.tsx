@@ -1,5 +1,8 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BaseModal } from "./base"
+import { SelectorFarmacos } from "./selector_farmacos"
+import { useFarmacias } from "./useFarmacias"
+import { supabase } from "../../libs/supabase"
 
 interface OrdenDespachoModalProps {
   open: boolean
@@ -12,45 +15,88 @@ export function OrdenDespachoModal({
   onClose,
   onCrear,
 }: OrdenDespachoModalProps) {
+  const farmacias = useFarmacias()
   const [form, setForm] = useState({
-    numero: "",
-    fecha: "",
-    farmacia: "",
-    prioridad: "",
-    medicamentos: "",
+    cod_sol: "",
+    fec_creacion: "",
+    farmacia_id_farmacia: "",
+    prioridad: "Normal",
+    medicamentos: [] as any[],
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    if (open) {
+      // Generar automáticamente el número de solicitud
+      supabase
+        .from("solicitud")
+        .select("cod_sol")
+        .order("id_sol", { ascending: false })
+        .limit(1)
+        .then(({ data }) => {
+          const last = data && data[0]?.cod_sol
+          let next = "S-0001"
+          if (last && /^S-\d+$/.test(last)) {
+            const num = parseInt(last.split("-")[1]) + 1
+            next = `S-${num.toString().padStart(4, "0")}`
+          }
+          setForm((f) => ({ ...f, cod_sol: next }))
+        })
+    }
+  }, [open])
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleMedicamentos = (meds: any[]) => {
+    setForm({ ...form, medicamentos: meds })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onCrear(form)
+    // cant_sol es la suma de cantidades solicitadas
+    const cant_sol = form.medicamentos.reduce(
+      (sum, m) => sum + (Number(m.cantidad) || 0),
+      0
+    )
+    onCrear({
+      cod_sol: form.cod_sol,
+      estado: "Pendiente",
+      prioridad: form.prioridad,
+      cant_sol,
+      fec_creacion: form.fec_creacion,
+      fec_cierre: null,
+      farmacia_id_farmacia: form.farmacia_id_farmacia,
+      medicamentos: form.medicamentos,
+    })
     onClose()
   }
 
   return (
-    <BaseModal open={open} onClose={onClose} widthClass="max-w-lg">
+    <BaseModal open={open} onClose={onClose} widthClass="max-w-3xl">
       <form onSubmit={handleSubmit}>
-        <h2 className="font-semibold text-2xl text-center mb-6">Nueva Solictud de despacho</h2>
+        <h2 className="font-semibold text-2xl text-center mb-6">
+          Nueva Solictud de despacho
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block font-medium mb-1">N° Solicitud</label>
             <input
-              name="numero"
-              value={form.numero}
-              onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2"
+              name="cod_sol"
+              value={form.cod_sol}
+              readOnly
+              className="w-full border rounded-md px-3 py-2 bg-gray-100"
               required
             />
           </div>
           <div>
             <label className="block font-medium mb-1">Fecha</label>
             <input
-              name="fecha"
+              name="fec_creacion"
               type="date"
-              value={form.fecha}
+              value={form.fec_creacion}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
               required
@@ -58,33 +104,40 @@ export function OrdenDespachoModal({
           </div>
           <div>
             <label className="block font-medium mb-1">Farmacia</label>
-            <input
-              name="farmacia"
-              value={form.farmacia}
+            <select
+              name="farmacia_id_farmacia"
+              value={form.farmacia_id_farmacia}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
               required
-            />
+            >
+              <option value="">Seleccione una farmacia</option>
+              {farmacias.map((f) => (
+                <option key={f.id_farmacia} value={f.id_farmacia}>
+                  {f.nom_farma}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block font-medium mb-1">Prioridad</label>
-            <input
+            <select
               name="prioridad"
               value={form.prioridad}
               onChange={handleChange}
               className="w-full border rounded-md px-3 py-2"
               required
-            />
+            >
+              <option value="Normal">Normal</option>
+              <option value="Urgente">Urgente</option>
+            </select>
           </div>
         </div>
         <div className="mb-6">
           <label className="block font-medium mb-1">Medicamentos</label>
-          <textarea
-            name="medicamentos"
+          <SelectorFarmacos
             value={form.medicamentos}
-            onChange={handleChange}
-            className="w-full border rounded-md px-3 py-2 min-h-[80px]"
-            required
+            onChange={handleMedicamentos}
           />
         </div>
         <div className="flex justify-end gap-2">

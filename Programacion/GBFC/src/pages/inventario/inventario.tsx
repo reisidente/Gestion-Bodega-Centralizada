@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Filter, Download, Plus, MoreVertical, Pencil, Package, Clock } from "lucide-react"
+import { Plus, MoreVertical, Pencil, Package, Clock, Tag } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
@@ -8,6 +8,7 @@ import { EditFarmacoModal } from "../../components/modals/editar_farmaco"
 import { AjustarStockModal } from "../../components/modals/ajuste_farmaco"
 import { HistorialFarmacoModal } from "../../components/modals/historial_farmaco"
 import { RegistrarFarmacoModal } from "../../components/modals/registro_farmaco"
+import { AgregarLoteModal } from "../../components/modals/agregar_lote"
 import { supabase } from "../../libs/supabase"
 
 export default function Inventario() {
@@ -20,78 +21,66 @@ export default function Inventario() {
   const [modalAjuste, setModalAjuste] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalHistorial, setModalHistorial] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalRegistrar, setModalRegistrar] = useState(false)
+  const [modalAgregarLote, setModalAgregarLote] = useState<{ open: boolean; data?: any }>({ open: false })
   const [farmacos, setFarmacos] = useState<any[]>([])
   const [lotes, setLotes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [historial, setHistorial] = useState<any[]>([])
+
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
-      const { data: farmacosData, error: farmacosError } = await supabase.from("farmaco").select("*, categoria, codigo, uni_medida, stock, id_farmaco")
-      const { data: lotesData, error: lotesError } = await supabase.from("lote").select("*, id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
-      if (!farmacosError && !lotesError) {
-        setFarmacos(farmacosData || [])
-        setLotes(lotesData || [])
-      }
-      setLoading(false)
-    }
-    fetchData()
-  }, [])
+      setLoading(true);
+      try {
+        const [{ data: farmacosData }, { data: lotesData }] = await Promise.all([
+          supabase
+            .from("farmaco")
+            .select("id_farmaco, nombre, categoria, codigo, uni_medida, stock"),
+          supabase
+            .from("lote")
+            .select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
+        ]);
 
-  useEffect(() => {
-    const fetchHistorial = async () => {
-      if (!modalHistorial.open || !modalHistorial.data?.id) {
-        setHistorial([])
-        return
+        if (farmacosData && lotesData) {
+          setFarmacos(farmacosData);
+          setLotes(lotesData);
+        }
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
       }
-      // Buscar lotes del fármaco
-      const lotesFarmaco = lotes.filter(l => l.farmaco_id_farmaco === modalHistorial.data.id)
-      if (lotesFarmaco.length === 0) {
-        setHistorial([])
-        return
-      }
-      // Buscar historial de ajustes para esos lotes
-      const loteIds = lotesFarmaco.map(l => l.id_lote)
-      const { data: ajustes } = await supabase
-        .from("historial_ajuste")
-        .select("*")
-        .in("lote_id_lote", loteIds)
-        .order("fec_ajuste", { ascending: false })
-      setHistorial(
-        (ajustes || []).map(a => ({
-          fecha: a.fec_ajuste,
-          entrada: a.tipo_ajuste === "Entrada" ? a.cant_ajuste : null,
-          salida: a.tipo_ajuste === "Salida" ? a.cant_ajuste : null,
-          total: a.cant_nueva,
-        }))
-      )
-    }
-    fetchHistorial()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modalHistorial.open, modalHistorial.data, lotes])
+      setLoading(false);
+    };
+    fetchData();
+  }, [])
 
   const inventoryData = farmacos.flatMap(farmaco => {
     const lotesFarmaco = lotes.filter(l => l.farmaco_id_farmaco === farmaco.id_farmaco)
     if (lotesFarmaco.length === 0) {
       return [{
         id: farmaco.id_farmaco,
+        codigo: farmaco.codigo,
         nombre: farmaco.nombre,
         lote: "-",
         categoria: farmaco.categoria,
         stock: farmaco.stock,
         vencimiento: "-",
+        precio: 0,
+        uni_medida: farmaco.uni_medida,
         estado: farmaco.stock < 50 ? "Stock bajo" : "Disponible",
+        id_lote: undefined, // Aseguramos que siempre exista la propiedad id_lote
       }]
     }
     return lotesFarmaco.map(lote => ({
       id: farmaco.id_farmaco,
+      codigo: farmaco.codigo,
       nombre: farmaco.nombre,
       lote: lote.num_lote,
       categoria: farmaco.categoria,
       stock: lote.cantidad,
       vencimiento: lote.fec_venci,
+      precio: lote.precio || 0,
+      uni_medida: farmaco.uni_medida,
       estado: lote.cantidad < 50 ? "Stock bajo" : "Disponible",
+      id_lote: lote.id_lote // Agregamos el id del lote para poder editarlo
     }))
   })
 
@@ -126,10 +115,6 @@ export default function Inventario() {
           <p className="text-gray-500 text-lg mt-1">Gestión de fármacos y lotes</p>
         </div>
         <div className="flex gap-2 mt-2 md:mt-0">
-          <Button variant="outline" className="flex items-center gap-2 font-medium">
-            <Download className="h-5 w-5" />
-            Exportar
-          </Button>
           <Button
             className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
             onClick={() => setModalRegistrar(true)} // <-- Abre el modal al hacer click
@@ -154,13 +139,7 @@ export default function Inventario() {
               {cat}
             </Button>
           ))}
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 px-4 py-2 text-base font-medium"
-          >
-            <Filter className="h-5 w-5" />
-            Filtros
-          </Button>
+
         </div>
         <div className="flex-1 flex justify-end">
           <input
@@ -175,11 +154,13 @@ export default function Inventario() {
 
       <TableContainer
         columns={[
-          { header: "Nombre", render: item => <span className="font-medium text-gray-900">{item.nombre}</span> },
+          { header: "Código", render: item => <span className="font-medium text-gray-900">{item.codigo}</span> },
+          { header: "Nombre", render: item => item.nombre },
           { header: "Lote", render: item => item.lote },
           { header: "Categoría", render: item => item.categoria },
           { header: "Stock", render: item => item.stock },
           { header: "Vencimiento", render: item => item.vencimiento },
+          { header: "Precio", render: item => `$${item.precio || 0}` },
           {
             header: "Estado",
             render: item => (
@@ -246,11 +227,28 @@ export default function Inventario() {
                         <button
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
                           onClick={() => {
-                            setModalEditar({ open: true, data: item })
+                            setModalEditar({
+                              open: true,
+                              data: {
+                                ...item,
+                                id_farmaco: item.id,
+                                uni_medida: item.uni_medida,
+                                precio: item.precio
+                              }
+                            })
                             setOpenMenu(null)
                           }}
                         >
                           <Pencil className="h-4 w-4" /> Editar
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                          onClick={() => {
+                            setModalAgregarLote({ open: true, data: item })
+                            setOpenMenu(null)
+                          }}
+                        >
+                          <Tag className="h-4 w-4" /> Agregar lote
                         </button>
                         <button
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
@@ -287,14 +285,57 @@ export default function Inventario() {
         initialData={modalEditar.data}
         onSave={async (data) => {
           if (!modalEditar.data?.id) return;
-          await supabase.from("farmaco").update({
-            nombre: data.nombre,
-            categoria: data.categoria,
-            codigo: data.codigo,
-          }).eq("id_farmaco", modalEditar.data.id)
-          const { data: farmacosData } = await supabase.from("farmaco").select("*, categoria, codigo, uni_medida, stock, id_farmaco")
-          setFarmacos(farmacosData || [])
-          setModalEditar({ open: false })
+          try {
+            // Actualizar el fármaco (sin precio)
+            const { error: updateError } = await supabase
+              .from("farmaco")
+              .update({
+                nombre: data.nombre,
+                categoria: data.categoria,
+                codigo: data.codigo,
+                uni_medida: data.uni_medida,
+              })
+              .eq("id_farmaco", modalEditar.data.id);
+
+            if (updateError) {
+              console.error("Error al actualizar fármaco:", updateError);
+              return;
+            }
+
+            // Actualizar el precio en el lote si existe
+            if (modalEditar.data.id_lote) {
+              const { error: updateLoteError } = await supabase
+                .from("lote")
+                .update({
+                  precio: data.precio
+                })
+                .eq("id_lote", modalEditar.data.id_lote);
+
+              if (updateLoteError) {
+                console.error("Error al actualizar precio del lote:", updateLoteError);
+                return;
+              }
+            }
+
+            // Recargar datos actualizados
+            const [{ data: farmacosData }, { data: lotesData }] = await Promise.all([
+              supabase
+                .from("farmaco")
+                .select("id_farmaco, nombre, categoria, codigo, uni_medida, stock"),
+              supabase
+                .from("lote")
+                .select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
+            ]);
+
+            if (farmacosData && lotesData) {
+              setFarmacos(farmacosData);
+              setLotes(lotesData);
+            }
+
+            setModalEditar({ open: false });
+          } catch (error) {
+            console.error("Error en la actualización:", error);
+          }
         }}
       />
       <AjustarStockModal
@@ -310,13 +351,13 @@ export default function Inventario() {
             ? lote.cantidad + cantidad
             : Math.max(0, lote.cantidad - cantidad)
           await supabase.from("lote").update({ cantidad: nuevoStock }).eq("id_lote", lote.id_lote)
-          await supabase.from("historial_ajuste").insert([
-            {
+          await supabase.from("historial_ajuste").insert([            {
               tipo_ajuste: tipo,
               cant_ajuste: cantidad,
               cant_ant: lote.cantidad,
               cant_nueva: nuevoStock,
               motivo,
+              observaciones,
               fec_ajuste: new Date().toISOString().slice(0, 10),
               lote_id_lote: lote.id_lote,
             }
@@ -325,13 +366,12 @@ export default function Inventario() {
           setLotes(lotesData || [])
           setModalAjuste({ open: false })
         }}
-      />
-      <HistorialFarmacoModal
-        open={modalHistorial.open}
-        onClose={() => setModalHistorial({ open: false })}
-        farmaco={modalHistorial.data?.nombre || ""}
-        historial={historial}
-      />
+      />        <HistorialFarmacoModal
+          open={modalHistorial.open}
+          onClose={() => setModalHistorial({ open: false })}
+          farmaco={modalHistorial.data?.nombre || ""}
+          farmacoId={modalHistorial.data?.id || 0}
+        />
       <RegistrarFarmacoModal
         open={modalRegistrar}
         onClose={() => setModalRegistrar(false)}
@@ -345,24 +385,59 @@ export default function Inventario() {
               stock: Number(form.total),
             }
           ]).select().single()
+          
           if (errorFarmaco || !newFarmaco) {
             alert("Error al registrar fármaco")
             return
           }
-          await supabase.from("lote").insert([
+
+          // Crear el lote con el precio del formulario
+          const { error: errorLote } = await supabase.from("lote").insert([
             {
               num_lote: form.lote,
               fec_fabri: new Date().toISOString().slice(0, 10), 
               fec_venci: form.fechaVencimiento,
               cantidad: Number(form.total),
-              precio: 0,
+              precio: Number(form.precio) || 0, // Usar el precio del formulario
               farmaco_id_farmaco: newFarmaco.id_farmaco,
             }
           ])
+
+          if (errorLote) {
+            alert("Error al registrar lote")
+            return
+          }
+
           setModalRegistrar(false)
-          const { data: farmacosData } = await supabase.from("farmaco").select("*, categoria, codigo, uni_medida, stock, id_farmaco")
+          const [{ data: farmacosData }, { data: lotesData }] = await Promise.all([
+            supabase.from("farmaco").select("id_farmaco, nombre, categoria, codigo, uni_medida, stock"),
+            supabase.from("lote").select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
+          ]);
+
+          if (farmacosData && lotesData) {
+            setFarmacos(farmacosData)
+            setLotes(lotesData)
+          }
+        }}
+      />
+      <AgregarLoteModal
+        open={modalAgregarLote.open}
+        onClose={() => setModalAgregarLote({ open: false })}
+        farmaco={modalAgregarLote.data}
+        onAgregar={async (form) => {
+          if (!modalAgregarLote.data?.id) return;
+          await supabase.from("lote").insert([
+            {
+              num_lote: form.lote,
+              fec_fabri: form.fechaFabricacion,
+              fec_venci: form.fechaVencimiento,
+              cantidad: Number(form.cantidad),
+              precio: Number(form.precio) || 0,
+              farmaco_id_farmaco: modalAgregarLote.data.id,
+            }
+          ])
+          setModalAgregarLote({ open: false })
           const { data: lotesData } = await supabase.from("lote").select("*, id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
-          setFarmacos(farmacosData || [])
           setLotes(lotesData || [])
         }}
       />

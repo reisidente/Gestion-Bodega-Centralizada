@@ -17,7 +17,7 @@ interface EditarReporteModalProps {
 
 const tipos = ["Stock Bajo", "Vencimientos", "Inventario", "Movimientos"]
 const formatos = ["PDF"]
-const frecuencias = ["Única", "Diaria", "Semanal", "Mensual"]
+const frecuencias = ["Diaria", "Semanal", "Mensual"]
 
 const ordenStockBajo = [
   "Porcentaje de stock",
