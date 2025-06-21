@@ -20,11 +20,18 @@ export default function Solicitudes() {
   useEffect(() => {
     const fetchSolicitudes = async () => {
       // Traer solicitudes y detalles relacionados
-      const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+      const { data: solicitudesData, error: solError } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+      if (solError) console.error("Error fetching solicitudes:", solError);
+
       // JOIN para traer el nombre del fármaco en cada detalle
-      const { data: detallesData } = await supabase
+      const { data: detallesData, error: detError } = await supabase
         .from("detalle_solicitud")
-        .select("*, farmaco: id_farmaco (nombre)")
+        .select("*, farmaco: id_farmaco (nombre)");
+      if (detError) console.error("Error fetching detalles:", detError);
+
+      console.log("Solicitudes de Supabase:", solicitudesData);
+      console.log("Detalles de Supabase:", detallesData);
+
       setSolicitudes(solicitudesData || [])
       setDetalleSolicitudes(detallesData || [])
     }
@@ -34,6 +41,23 @@ export default function Solicitudes() {
   // Unir solicitudes con sus detalles y fármacos
   const requestsData = solicitudes.map(sol => {
     const detalles = detalleSolicitudes.filter(d => d.solicitud_id_sol === sol.id_sol)
+
+    // --- Log de depuración ---
+    if (detalles.length === 0) {
+      console.warn(`ADVERTENCIA: No se encontraron detalles para la solicitud con id_sol: ${sol.id_sol}`);
+    }
+    // --- Fin del log ---
+
+    // Obtener la fecha de despacho si la solicitud está completada
+    let fechaDespacho = null;
+    if (sol.estado === 'Completada' && detalles.length > 0) {
+      // Tomamos la fecha del primer detalle despachado que la tenga
+      const detalleConFecha = detalles.find(d => d.fec_despacho);
+      if (detalleConFecha) {
+        fechaDespacho = detalleConFecha.fec_despacho;
+      }
+    }
+
     return {
       id: sol.cod_sol, // Usar cod_sol como identificador principal
       cod_sol: sol.cod_sol,
@@ -41,6 +65,7 @@ export default function Solicitudes() {
       farmacia: sol.farmacia?.nom_farma || "",
       farmacia_id_farmacia: sol.farmacia?.id_farmacia || sol.farmacia_id_farmacia || "",
       fechaCreacion: sol.fec_creacion,
+      fechaDespacho, // Añadir la fecha de despacho
       estado: sol.estado,
       prioridad: sol.prioridad,
       cantidad: sol.cant_sol,
@@ -79,12 +104,10 @@ export default function Solicitudes() {
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case "Aprobada":
-        return "success"
       case "Pendiente":
         return "destructive"
       case "Completada":
-        return "warning"
+        return "success"
     }
   }
 
@@ -143,7 +166,8 @@ export default function Solicitudes() {
         columns={[
           { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span> },
           { header: "Farmacia", render: item => item.farmacia },
-          { header: "Fecha", render: item => item.fechaCreacion },
+          { header: "Fecha Creación", render: item => item.fechaCreacion },
+          { header: "Fecha Despacho", render: item => item.fechaDespacho || '-' },
           {
             header: "Prioridad",
             render: item => (
@@ -189,8 +213,15 @@ export default function Solicitudes() {
           prioridad: "",
           farmacos: [],
         }}
-        onSave={solicitudActualizada => {
-          setModalDetalle({ open: false })
+        onSave={async (solicitudActualizada) => {
+          setModalDetalle({ open: false });
+
+          // Refrescar la data para ver los cambios en tiempo real
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
+
+          setSolicitudes(solicitudesData || []);
+          setDetalleSolicitudes(detallesData || []);
         }}
       />
 
@@ -211,6 +242,7 @@ export default function Solicitudes() {
           if (medicamentos && medicamentos.length > 0) {
             const detalles = medicamentos.map((med: any) => ({
               solicitud_id_sol: nuevaSolicitud.id_sol,
+              id_farmaco: med.id_farmaco, // Relación con farmaco
               cant_despacho: med.cantidad, // cantidad solicitada
               estado_fmc: 'Pendiente',
               fec_despacho: null, // Se actualizará al despachar
@@ -220,7 +252,7 @@ export default function Solicitudes() {
           setModalOrdenDespacho(false);
           // Refrescar solicitudes
           const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
         }}
@@ -243,6 +275,7 @@ export default function Solicitudes() {
           if (medicamentos && medicamentos.length > 0) {
             const detalles = medicamentos.map((med: any) => ({
               solicitud_id_sol: nuevaSolicitud.id_sol,
+              id_farmaco: med.id_farmaco, // Relación con farmaco
               cant_despacho: med.cantidad, // cantidad solicitada
               estado_fmc: 'Pendiente',
               fec_despacho: null, // Se actualizará al despachar
@@ -252,7 +285,7 @@ export default function Solicitudes() {
           setModalOrdenCompra(false);
           // Refrescar solicitudes
           const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
         }}

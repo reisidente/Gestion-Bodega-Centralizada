@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BaseModal } from "./base"
 import { supabase } from "../../libs/supabase"
 
@@ -16,6 +16,7 @@ interface DetalleSolicitudModalProps {
   onClose: () => void
   solicitud: {
     id: string
+    id_sol?: number // ID de la solicitud para la actualización
     farmacia: string
     fechaCreacion: string
     estado: string
@@ -33,11 +34,21 @@ export function DetalleSolicitudModal({
   solicitud,
   onSave,
 }: DetalleSolicitudModalProps) {
-  const [farmacos, setFarmacos] = useState(solicitud.farmacos.map(f => ({
-    ...f,
-    cantidadADespachar: f.cantidadAprobada ?? f.cantidadSolicitada ?? 0
-  })))
+  const [farmacos, setFarmacos] = useState<FarmacoDetalle[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Variable para determinar si la solicitud está completada
+  const isCompletada = solicitud.estado === "Completada";
+
+  useEffect(() => {
+    // Cuando la solicitud (prop) cambia, actualizamos el estado interno de los fármacos
+    if (solicitud && solicitud.farmacos) {
+      setFarmacos(solicitud.farmacos.map(f => ({
+        ...f,
+        cantidadADespachar: f.cantidadAprobada ?? f.cantidadSolicitada ?? 0
+      })))
+    }
+  }, [solicitud]) // Este efecto se ejecuta cada vez que la prop `solicitud` cambia
 
   const handleCantidadChange = (idx: number, value: number) => {
     setFarmacos(prev => prev.map((f, i) => i === idx ? { ...f, cantidadADespachar: value } : f))
@@ -58,6 +69,18 @@ export function DetalleSolicitudModal({
         }).eq("id_detalle", f.id_detalle)
       }
     }
+
+    // Verificar si todos los fármacos están despachados
+    const todosDespachados = farmacos.every(f => f.estado === "Despachado");
+
+    if (todosDespachados && solicitud.id_sol) {
+      // Actualizar el estado de la solicitud a "Completada"
+      await supabase
+        .from("solicitud")
+        .update({ estado: "Completada" })
+        .eq("id_sol", solicitud.id_sol);
+    }
+
     setLoading(false)
     onSave?.(farmacos)
     onClose()
@@ -137,6 +160,7 @@ export function DetalleSolicitudModal({
                       value={f.cantidadADespachar}
                       onChange={e => handleCantidadChange(idx, Number(e.target.value))}
                       className="border rounded px-2 py-1 w-20"
+                      disabled={isCompletada} // Deshabilitar si está completada
                     />
                   </td>
                   <td className="py-4">
@@ -145,13 +169,15 @@ export function DetalleSolicitudModal({
                     </span>
                   </td>
                   <td className="py-4">
-                    <button
-                      className="text-black font-medium hover:underline"
-                      type="button"
-                      onClick={() => handleDespachar(idx)}
-                    >
-                      Despachar
-                    </button>
+                    {!isCompletada && (
+                      <button
+                        className="text-black font-medium hover:underline"
+                        type="button"
+                        onClick={() => handleDespachar(idx)}
+                      >
+                        Despachar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -170,15 +196,17 @@ export function DetalleSolicitudModal({
           onClick={onClose}
           disabled={loading}
         >
-          Cancelar
+          {isCompletada ? "Cerrar" : "Cancelar"}
         </button>
-        <button
-          className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
-          onClick={handleGuardar}
-          disabled={loading}
-        >
-          {loading ? "Guardando..." : "Guardar cambios"}
-        </button>
+        {!isCompletada && (
+          <button
+            className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
+            onClick={handleGuardar}
+            disabled={loading}
+          >
+            {loading ? "Guardando..." : "Guardar cambios"}
+          </button>
+        )}
       </div>
     </BaseModal>
   )
