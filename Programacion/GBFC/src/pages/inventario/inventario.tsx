@@ -25,9 +25,17 @@ export default function Inventario() {
   const [farmacos, setFarmacos] = useState<any[]>([])
   const [lotes, setLotes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-
+  const [alertConfig, setAlertConfig] = useState({
+    diasVencimiento: 30,
+    cantidadMinimaStock: 50,
+  })
 
   useEffect(() => {
+    const savedConfig = localStorage.getItem("alertConfig")
+    if (savedConfig) {
+      setAlertConfig(JSON.parse(savedConfig))
+    }
+
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -49,39 +57,61 @@ export default function Inventario() {
       }
       setLoading(false);
     };
-    fetchData();
+    fetchData()
   }, [])
 
-  const inventoryData = farmacos.flatMap(farmaco => {
-    const lotesFarmaco = lotes.filter(l => l.farmaco_id_farmaco === farmaco.id_farmaco)
+  const inventoryData = farmacos.flatMap((farmaco) => {
+    const lotesFarmaco = lotes.filter(
+      (l) => l.farmaco_id_farmaco === farmaco.id_farmaco
+    )
+
+    const today = new Date()
+    const limitDate = new Date()
+    limitDate.setDate(today.getDate() + alertConfig.diasVencimiento)
+
     if (lotesFarmaco.length === 0) {
-      return [{
+      return [
+        {
+          id: farmaco.id_farmaco,
+          codigo: farmaco.codigo,
+          nombre: farmaco.nombre,
+          lote: "-",
+          categoria: farmaco.categoria,
+          stock: farmaco.stock,
+          vencimiento: "-",
+          precio: 0,
+          uni_medida: farmaco.uni_medida,
+          estado:
+            farmaco.stock < alertConfig.cantidadMinimaStock
+              ? "Stock bajo"
+              : "Disponible",
+          id_lote: undefined, // Aseguramos que siempre exista la propiedad id_lote
+        },
+      ]
+    }
+    return lotesFarmaco.map((lote) => {
+      const vencimientoDate = new Date(lote.fec_venci)
+      let estado = "Disponible"
+      if (vencimientoDate <= limitDate && vencimientoDate >= today) {
+        estado = "Proximo a vencer"
+      } else if (lote.cantidad < alertConfig.cantidadMinimaStock) {
+        estado = "Stock bajo"
+      }
+
+      return {
         id: farmaco.id_farmaco,
         codigo: farmaco.codigo,
         nombre: farmaco.nombre,
-        lote: "-",
+        lote: lote.num_lote,
         categoria: farmaco.categoria,
-        stock: farmaco.stock,
-        vencimiento: "-",
-        precio: 0,
+        stock: lote.cantidad,
+        vencimiento: lote.fec_venci,
+        precio: lote.precio || 0,
         uni_medida: farmaco.uni_medida,
-        estado: farmaco.stock < 50 ? "Stock bajo" : "Disponible",
-        id_lote: undefined, // Aseguramos que siempre exista la propiedad id_lote
-      }]
-    }
-    return lotesFarmaco.map(lote => ({
-      id: farmaco.id_farmaco,
-      codigo: farmaco.codigo,
-      nombre: farmaco.nombre,
-      lote: lote.num_lote,
-      categoria: farmaco.categoria,
-      stock: lote.cantidad,
-      vencimiento: lote.fec_venci,
-      precio: lote.precio || 0,
-      uni_medida: farmaco.uni_medida,
-      estado: lote.cantidad < 50 ? "Stock bajo" : "Disponible",
-      id_lote: lote.id_lote // Agregamos el id del lote para poder editarlo
-    }))
+        estado,
+        id_lote: lote.id_lote, // Agregamos el id del lote para poder editarlo
+      }
+    })
   })
 
   const categories = [
@@ -154,13 +184,13 @@ export default function Inventario() {
 
       <TableContainer
         columns={[
-          { header: "Código", render: item => <span className="font-medium text-gray-900">{item.codigo}</span> },
-          { header: "Nombre", render: item => item.nombre },
-          { header: "Lote", render: item => item.lote },
-          { header: "Categoría", render: item => item.categoria },
-          { header: "Stock", render: item => item.stock },
-          { header: "Vencimiento", render: item => item.vencimiento },
-          { header: "Precio", render: item => `$${item.precio || 0}` },
+          { header: "Código", render: item => <span className="font-medium text-gray-900">{item.codigo}</span>, sortKey: "codigo" },
+          { header: "Nombre", render: item => item.nombre, sortKey: "nombre" },
+          { header: "Lote", render: item => item.lote, sortKey: "lote" },
+          { header: "Categoría", render: item => item.categoria, sortKey: "categoria" },
+          { header: "Stock", render: item => item.stock, sortKey: "stock" },
+          { header: "Vencimiento", render: item => item.vencimiento, sortKey: "vencimiento" },
+          { header: "Precio", render: item => `$${item.precio || 0}`, sortKey: "precio" },
           {
             header: "Estado",
             render: item => (
@@ -170,15 +200,16 @@ export default function Inventario() {
                   item.estado === "Disponible"
                     ? "bg-green-500/90 text-white"
                     : item.estado === "Stock bajo"
-                    ? "bg-red-100 text-red-600 border border-red-300"
+                    ? "bg-red-500/90 text-white"
                     : item.estado === "Proximo a vencer"
-                    ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                    ? "bg-yellow-500/90 text-white"
                     : ""
                 }`}
               >
                 {item.estado}
               </Badge>
             ),
+            sortKey: "estado"
           },
           {
             header: "Acciones",

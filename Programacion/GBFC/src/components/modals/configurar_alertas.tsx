@@ -6,9 +6,9 @@ interface ConfigAlertasModalProps {
   onClose: () => void
   initialConfig?: {
     diasVencimiento?: number
-    porcentajeStockBajo?: number
+    cantidadMinimaStock?: number
   }
-  onSave?: (config: { diasVencimiento: number; porcentajeStockBajo: number }) => void
+  onSave?: (config: { diasVencimiento: number; cantidadMinimaStock: number }) => void
 }
 
 export function ConfigAlertasModal({
@@ -18,7 +18,7 @@ export function ConfigAlertasModal({
   onSave,
 }: ConfigAlertasModalProps) {
   const [diasVencimiento, setDiasVencimiento] = useState(initialConfig.diasVencimiento ?? 30)
-  const [porcentajeStockBajo, setPorcentajeStockBajo] = useState(initialConfig.porcentajeStockBajo ?? 20)
+  const [cantidadMinimaStock, setCantidadMinimaStock] = useState(initialConfig.cantidadMinimaStock ?? 50)
 
   return (
     <BaseModal open={open} onClose={onClose} widthClass="max-w-2xl">
@@ -44,17 +44,18 @@ export function ConfigAlertasModal({
         <p className="text-gray-500 mb-4">
           Configure los parámetros para las alertas de stock bajo
         </p>
-        <label className="block font-medium mb-1">Porcentaje para stock bajo</label>
+        <label className="block font-medium mb-1">
+          Cantidad mínima para alerta de stock
+        </label>
         <input
           type="number"
           min={1}
-          max={100}
           className="w-full border rounded-md px-3 py-2 mb-1"
-          value={porcentajeStockBajo}
-          onChange={e => setPorcentajeStockBajo(Number(e.target.value))}
+          value={cantidadMinimaStock}
+          onChange={e => setCantidadMinimaStock(Number(e.target.value))}
         />
         <div className="text-gray-400 text-sm">
-          Porcentaje del stock mínimo para considerar que un producto está con stock bajo
+          Cantidad de unidades para considerar que un producto está con stock bajo
         </div>
       </div>
       <div className="flex justify-end gap-2 mt-8">
@@ -66,7 +67,7 @@ export function ConfigAlertasModal({
         </button>
         <button
           className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
-          onClick={() => onSave?.({ diasVencimiento, porcentajeStockBajo })}
+          onClick={() => onSave?.({ diasVencimiento, cantidadMinimaStock })}
         >
           Guardar configuración
         </button>

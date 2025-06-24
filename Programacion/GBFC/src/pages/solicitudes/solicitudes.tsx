@@ -19,18 +19,15 @@ export default function Solicitudes() {
 
   useEffect(() => {
     const fetchSolicitudes = async () => {
-      // Traer solicitudes y detalles relacionados
-      const { data: solicitudesData, error: solError } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)")
-      if (solError) console.error("Error fetching solicitudes:", solError);
+      const { data: solicitudesData, error: solError } = await supabase
+        .from("solicitud")
+        .select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+      if (solError) console.error("Error fetching solicitudes:", solError)
 
-      // JOIN para traer el nombre del fármaco en cada detalle
       const { data: detallesData, error: detError } = await supabase
         .from("detalle_solicitud")
-        .select("*, farmaco: id_farmaco (nombre)");
-      if (detError) console.error("Error fetching detalles:", detError);
-
-      console.log("Solicitudes de Supabase:", solicitudesData);
-      console.log("Detalles de Supabase:", detallesData);
+        .select("*, farmaco: id_farmaco (nombre)")
+      if (detError) console.error("Error fetching detalles:", detError)
 
       setSolicitudes(solicitudesData || [])
       setDetalleSolicitudes(detallesData || [])
@@ -41,31 +38,21 @@ export default function Solicitudes() {
   // Unir solicitudes con sus detalles y fármacos
   const requestsData = solicitudes.map(sol => {
     const detalles = detalleSolicitudes.filter(d => d.solicitud_id_sol === sol.id_sol)
-
-    // --- Log de depuración ---
-    if (detalles.length === 0) {
-      console.warn(`ADVERTENCIA: No se encontraron detalles para la solicitud con id_sol: ${sol.id_sol}`);
-    }
-    // --- Fin del log ---
-
-    // Obtener la fecha de despacho si la solicitud está completada
-    let fechaDespacho = null;
+    let fechaDespacho = null
     if (sol.estado === 'Completada' && detalles.length > 0) {
-      // Tomamos la fecha del primer detalle despachado que la tenga
-      const detalleConFecha = detalles.find(d => d.fec_despacho);
+      const detalleConFecha = detalles.find(d => d.fec_despacho)
       if (detalleConFecha) {
-        fechaDespacho = detalleConFecha.fec_despacho;
+        fechaDespacho = detalleConFecha.fec_despacho
       }
     }
-
     return {
-      id: sol.cod_sol, // Usar cod_sol como identificador principal
+      id: sol.cod_sol,
       cod_sol: sol.cod_sol,
-      id_sol: sol.id_sol, // Solo si necesitas el id interno para joins
+      id_sol: sol.id_sol,
       farmacia: sol.farmacia?.nom_farma || "",
       farmacia_id_farmacia: sol.farmacia?.id_farmacia || sol.farmacia_id_farmacia || "",
       fechaCreacion: sol.fec_creacion,
-      fechaDespacho, // Añadir la fecha de despacho
+      fechaDespacho,
       estado: sol.estado,
       prioridad: sol.prioridad,
       cantidad: sol.cant_sol,
@@ -164,10 +151,10 @@ export default function Solicitudes() {
 
       <TableContainer
         columns={[
-          { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span> },
-          { header: "Farmacia", render: item => item.farmacia },
-          { header: "Fecha Creación", render: item => item.fechaCreacion },
-          { header: "Fecha Despacho", render: item => item.fechaDespacho || '-' },
+          { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span>, sortKey: "id" },
+          { header: "Farmacia", render: item => item.farmacia, sortKey: "farmacia" },
+          { header: "Fecha Creación", render: item => item.fechaCreacion, sortKey: "fechaCreacion" },
+          { header: "Fecha Despacho", render: item => item.fechaDespacho || '-', sortKey: "fechaDespacho" },
           {
             header: "Prioridad",
             render: item => (
@@ -175,6 +162,7 @@ export default function Solicitudes() {
                 {item.prioridad}
               </Badge>
             ),
+            sortKey: "prioridad"
           },
           {
             header: "Estado",
@@ -183,6 +171,7 @@ export default function Solicitudes() {
                 {item.estado}
               </Badge>
             ),
+            sortKey: "estado"
           },
           {
             header: "Acciones",

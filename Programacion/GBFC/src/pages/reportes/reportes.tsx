@@ -1,39 +1,199 @@
-import { useEffect, useRef, useState } from "react"
-import { Filter, Download, Settings, MoreVertical, Eye, Pencil } from "lucide-react"
+import { useEffect, useRef, useState, useCallback } from "react"
+import { Filter, Download, Settings, MoreVertical, Eye, Trash2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
-import { VerReporteModal } from "../../components/modals/ver_reporte"
-import { EditarReporteModal } from "../../components/modals/editar_reporte"
 import { CrearReporteModal } from "../../components/modals/crear_reporte"
 import { supabase } from "../../libs/supabase"
+import type { FileObject } from "@supabase/storage-js"
+
+// Definimos un tipo para los datos del reporte que mostraremos en la tabla
+interface ReporteMostrado {
+  nombre: string
+  tipo: string
+  fecha: string
+  url: string
+  fileName: string
+}
 
 export default function Reportes() {
   const [filtroActivo, setFiltroActivo] = useState("Todos")
   const [search, setSearch] = useState("")
   const [openMenu, setOpenMenu] = useState<string | null>(null)
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number
+    left: number
+  } | null>(null)
   const buttonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
-  const [modalVer, setModalVer] = useState<{ open: boolean; data?: any }>({ open: false })
-  const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalCrear, setModalCrear] = useState(false)
-  const [reportes, setReportes] = useState<any[]>([])
+  const [reportes, setReportes] = useState<FileObject[]>([])
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const fetchReportes = async () => {
-      const { data: reportesData } = await supabase.from("reporte").select("*")
-      setReportes(reportesData || [])
+  const handleDownload = async (fileName: string) => {
+    setOpenMenu(null)
+    try {
+      const { data, error } = await supabase.storage
+        .from("reportes")
+        .download(fileName)
+      if (error) {
+        throw error
+      }
+      const url = window.URL.createObjectURL(data)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Error al descargar el reporte:", error)
+      alert("No se pudo descargar el reporte.")
     }
-    fetchReportes()
+  }
+
+  const fetchReportes = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase.storage.from("reportes").list()
+
+    if (error) {
+      console.error("Error al listar reportes:", error)
+      setReportes([])
+    } else {
+      setReportes(data || [])
+    }
+    setLoading(false)
   }, [])
 
-  const filtros = [
-    "Todos",
-    ...Array.from(new Set(reportes.map(r => r.tipo)))
-  ]
+  useEffect(() => {
+    fetchReportes()
+  }, [fetchReportes])
 
-  const filteredData = reportes.filter(
+  const handleGenerateAndUploadReport = async (config: {
+    titulo: string
+    tipo: string
+  }) => {
+    setLoading(true)
+    setModalCrear(false)
+
+    const doc = new jsPDF()
+    const fecha = new Date().toLocaleDateString()
+    const fileName = `${config.tipo}_${config.titulo.replace(
+      /\s+/g,
+      "_"
+    )}_${new Date().getTime()}.pdf`
+
+    doc.text(`Reporte de: ${config.tipo}`, 14, 20)
+    doc.text(`Título: ${config.titulo}`, 14, 28)
+    doc.text(`Fecha: ${fecha}`, 14, 36)
+
+    let tableData: any[] = []
+    let head: string[][] = []
+
+    try {
+      switch (config.tipo) {
+        case "Inventario": {
+          const { data, error } = await supabase
+            .from("farmaco")
+            .select("nombre, codigo, categoria, stock, uni_medida")
+          if (error) throw error
+          head = [["Nombre", "Código", "Categoría", "Stock", "U. Medida"]]
+          tableData =
+            data?.map((f) => [
+              f.nombre,
+              f.codigo,
+              f.categoria,
+              f.stock,
+              f.uni_medida,
+            ]) || []
+          break
+        }
+        case "Alertas": {
+          const { data, error } = await supabase
+            .from("alerta")
+            .select("*, farmaco:farmaco_id_farmaco(nombre)")
+          if (error) throw error
+          head = [["Fármaco", "Tipo Alerta", "Nivel", "Mensaje", "Vencimiento"]]
+          tableData =
+            data?.map((a) => [
+              a.farmaco?.nombre || "N/A",
+              a.tipo_alerta,
+              a.nivel,
+              a.mensaje,
+              a.fec_vencimiento === "9999-12-31"
+                ? "N/A"
+                : new Date(a.fec_vencimiento).toLocaleDateString(),
+            ]) || []
+          break
+        }
+        // Agrega más casos para otros tipos de reportes
+      }
+
+      autoTable(doc, {
+        head,
+        body: tableData,
+        startY: 44,
+      })
+
+      const pdfBlob = doc.output("blob")
+
+      const { error: uploadError } = await supabase.storage
+        .from("reportes")
+        .upload(fileName, pdfBlob)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      await fetchReportes() // Refrescar la lista
+    } catch (error) {
+      console.error("Error al generar o subir el reporte:", error)
+      alert("No se pudo generar el reporte. Revise la consola para más detalles.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteReport = async (displayName: string, fileName: string) => {
+    if (
+      !window.confirm(`¿Seguro que quieres eliminar el reporte "${displayName}"?`)
+    )
+      return
+
+    setLoading(true)
+    const { error } = await supabase.storage.from("reportes").remove([fileName])
+    if (error) {
+      console.error("Error al eliminar el reporte:", error)
+      alert("No se pudo eliminar el reporte.")
+    } else {
+      await fetchReportes() // Refrescar
+    }
+    setLoading(false)
+    setOpenMenu(null)
+  }
+
+  const getPublicUrl = (fileName: string) => {
+    const { data } = supabase.storage.from("reportes").getPublicUrl(fileName)
+    return data.publicUrl
+  }
+
+  // Transforma los datos de los archivos para la tabla
+  const dataMostrada: ReporteMostrado[] = reportes.map((file) => {
+    const parts = file.name.split("_")
+    return {
+      nombre: parts.length > 1 ? parts[1].replace(/_/g, " ") : file.name,
+      tipo: parts[0],
+      fecha: new Date(file.created_at).toLocaleDateString(),
+      url: getPublicUrl(file.name),
+      fileName: file.name,
+    }
+  })
+
+  const filtros = ["Todos", ...Array.from(new Set(dataMostrada.map((r) => r.tipo)))]
+  const filteredData = dataMostrada.filter(
     (item) =>
       (filtroActivo === "Todos" || item.tipo === filtroActivo) &&
       (item.nombre?.toLowerCase().includes(search.toLowerCase()) ||
@@ -46,19 +206,24 @@ export default function Reportes() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Reportes</h1>
-          <p className="text-gray-500 text-lg mt-1">Visualización y exportación de reportes</p>
+          <p className="text-gray-500 text-lg mt-1">
+            Visualización y exportación de reportes
+          </p>
         </div>
         <div className="flex gap-2 mt-2 md:mt-0">
-          <Button variant="outline" className="flex items-center gap-2 font-medium">
-            <Download className="h-5 w-5" />
-            Exportar
-          </Button>
           <Button
             className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
             onClick={() => setModalCrear(true)}
+            disabled={loading}
           >
-            <Settings className="h-5 w-5" />
-            Nuevo reporte
+            {loading ? (
+              "Procesando..."
+            ) : (
+              <>
+                <Settings className="h-5 w-5" />
+                Nuevo reporte
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -91,32 +256,45 @@ export default function Reportes() {
             type="text"
             placeholder="Buscar reporte..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="border rounded-md px-4 py-2 text-base w-full md:w-72 outline-none focus:ring-2 focus:ring-blue-200 transition"
           />
         </div>
       </div>
 
       {/* Tabla de reportes */}
+      {loading && <p>Cargando...</p>}
       <TableContainer
         columns={[
-          { header: "Nombre", render: item => <span className="font-medium text-gray-900">{item.nombre}</span> },
-          { header: "Tipo", render: item => item.tipo },
-          { header: "Fecha", render: item => item.fecha ? new Date(item.fecha).toLocaleDateString() : "" },
-          { header: "Creado por", render: item => item.creadoPor },
-          { header: "Formato", render: item => <Badge className="text-xs">{item.formato}</Badge> },
+          {
+            header: "Nombre",
+            render: (item) => (
+              <span className="font-medium text-gray-900">{item.nombre}</span>
+            ),
+          },
+          { header: "Tipo", render: (item) => item.tipo },
+          { header: "Fecha", render: (item) => item.fecha },
+          {
+            header: "Formato",
+            render: () => <Badge className="text-xs">PDF</Badge>,
+          },
           {
             header: "Acciones",
-            render: item => (
+            render: (item) => (
               <div className="flex items-center">
                 <Button
-                  ref={el => { buttonRefs.current[item.nombre] = el }}
+                  ref={(el) => {
+                    buttonRefs.current[item.fileName] = el
+                  }}
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 p-0"
                   onClick={() => {
-                    const rect = buttonRefs.current[item.nombre]?.getBoundingClientRect()
-                    setOpenMenu(openMenu === item.nombre ? null : item.nombre)
+                    const rect =
+                      buttonRefs.current[item.fileName]?.getBoundingClientRect()
+                    setOpenMenu(
+                      openMenu === item.fileName ? null : item.fileName
+                    )
                     setMenuPosition(
                       rect
                         ? {
@@ -131,7 +309,7 @@ export default function Reportes() {
                   <MoreVertical className="h-5 w-5" />
                 </Button>
                 <AnimatePresence>
-                  {openMenu === item.nombre && menuPosition && (
+                  {openMenu === item.fileName && menuPosition && (
                     <>
                       <div
                         className="fixed inset-0 z-10"
@@ -149,29 +327,28 @@ export default function Reportes() {
                           left: menuPosition.left,
                         }}
                       >
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalVer({ open: true, data: item })
-                            setOpenMenu(null)
-                          }}
-                        >
-                          <Eye className="h-4 w-4" /> Ver reporte
-                        </button>
-                        <button
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
                           onClick={() => setOpenMenu(null)}
+                        >
+                          <Eye className="h-4 w-4" /> Ver reporte
+                        </a>
+                        <button
+                          onClick={() => handleDownload(item.fileName)}
+                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
                         >
                           <Download className="h-4 w-4" /> Descargar
                         </button>
                         <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalEditar({ open: true, data: item })
-                            setOpenMenu(null)
-                          }}
+                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors text-red-600"
+                          onClick={() =>
+                            handleDeleteReport(item.nombre, item.fileName)
+                          }
                         >
-                          <Pencil className="h-4 w-4" /> Editar
+                          <Trash2 className="h-4 w-4" /> Eliminar
                         </button>
                       </motion.div>
                     </>
@@ -185,70 +362,10 @@ export default function Reportes() {
       />
 
       {/* Modals */}
-      <VerReporteModal
-        open={modalVer.open}
-        onClose={() => setModalVer({ open: false })}
-        reporte={modalVer.data || {}}
-        onDescargar={() => {/* lógica de descarga */}}
-        onEditar={() => {
-          setModalVer({ open: false })
-          setModalEditar({ open: true, data: modalVer.data })
-        }}
-        onVolver={() => setModalVer({ open: false })}
-      />
-
-      <EditarReporteModal
-        open={modalEditar.open}
-        onClose={() => setModalEditar({ open: false })}
-        initialData={{
-          ...modalEditar.data,
-          tipo: typeof modalEditar.data?.tipo === "string"
-            ? (modalEditar.data.tipo.charAt(0).toUpperCase() + modalEditar.data.tipo.slice(1).toLowerCase())
-            : "Stock Bajo",
-        }}
-        onSave={async (data) => {
-          if (!modalEditar.data?.id) return;
-          await supabase.from("reporte").update({
-            nombre: data.titulo,
-            tipo: data.tipo,
-            formato: data.formato,
-            frecuencia: data.frecuencia,
-            descripcion: data.descripcion,
-            parametros: data.parametros,
-          }).eq("id", modalEditar.data.id)
-          setModalEditar({ open: false })
-          // Refrescar reportes
-          const { data: reportesData } = await supabase.from("reporte").select("*")
-          setReportes(reportesData || [])
-        }}
-      />
-
       <CrearReporteModal
         open={modalCrear}
         onClose={() => setModalCrear(false)}
-        onCreate={async (data) => {
-          // Insertar reporte en Supabase
-          const { data: nuevoReporte, error } = await supabase.from("reporte").insert([
-            {
-              nombre: data.titulo,
-              tipo: data.tipo,
-              formato: data.formato,
-              frecuencia: data.frecuencia,
-              descripcion: data.descripcion,
-              parametros: data.parametros,
-              fecha: new Date().toISOString().slice(0, 10),
-              creadoPor: "Administrador", // Puedes ajustar según el usuario logueado
-            }
-          ])
-          if (error) {
-            alert("Error al crear reporte")
-            return
-          }
-          setModalCrear(false)
-          // Refrescar reportes
-          const { data: reportesData } = await supabase.from("reporte").select("*")
-          setReportes(reportesData || [])
-        }}
+        onCreate={handleGenerateAndUploadReport}
       />
     </div>
   )
