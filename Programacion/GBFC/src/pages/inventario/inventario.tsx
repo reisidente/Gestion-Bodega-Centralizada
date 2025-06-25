@@ -25,19 +25,26 @@ export default function Inventario() {
   const [farmacos, setFarmacos] = useState<any[]>([])
   const [lotes, setLotes] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [alertConfig, setAlertConfig] = useState({
-    diasVencimiento: 30,
-    cantidadMinimaStock: 50,
+  const [alertConfig, setAlertConfig] = useState(() => {
+    const savedConfig = localStorage.getItem("alertConfig")
+    return savedConfig
+      ? JSON.parse(savedConfig)
+      : {
+          diasVencimiento: 30,
+          cantidadMinimaStock: 50,
+        }
   })
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem("alertConfig")
-    if (savedConfig) {
-      setAlertConfig(JSON.parse(savedConfig))
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "alertConfig" && event.newValue) {
+        setAlertConfig(JSON.parse(event.newValue))
+      }
     }
+    window.addEventListener("storage", handleStorageChange)
 
     const fetchData = async () => {
-      setLoading(true);
+      setLoading(true)
       try {
         const [{ data: farmacosData }, { data: lotesData }] = await Promise.all([
           supabase
@@ -45,19 +52,25 @@ export default function Inventario() {
             .select("id_farmaco, nombre, categoria, codigo, uni_medida, stock"),
           supabase
             .from("lote")
-            .select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
-        ]);
+            .select(
+              "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco"
+            ),
+        ])
 
         if (farmacosData && lotesData) {
-          setFarmacos(farmacosData);
-          setLotes(lotesData);
+          setFarmacos(farmacosData)
+          setLotes(lotesData)
         }
       } catch (error) {
-        console.error("Error al cargar datos:", error);
+        console.error("Error al cargar datos:", error)
       }
-      setLoading(false);
-    };
+      setLoading(false)
+    }
     fetchData()
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+    }
   }, [])
 
   const inventoryData = farmacos.flatMap((farmaco) => {
@@ -65,11 +78,27 @@ export default function Inventario() {
       (l) => l.farmaco_id_farmaco === farmaco.id_farmaco
     )
 
+    // Obtener el precio más reciente (o el mayor) de los lotes del fármaco
+    let precioFarmaco = 0
+    if (lotesFarmaco.length > 0) {
+      // Puedes cambiar Math.max por otra lógica si prefieres el más reciente
+      precioFarmaco = Math.max(...lotesFarmaco.map(l => l.precio || 0))
+    }
+
     const today = new Date()
     const limitDate = new Date()
     limitDate.setDate(today.getDate() + alertConfig.diasVencimiento)
 
+    // Se calcula el stock total sumando las cantidades de todos los lotes del fármaco.
+    const totalStock = lotesFarmaco.reduce((sum, l) => sum + l.cantidad, 0)
+    // Se determina si el stock es bajo comparando el total con la configuración.
+    const isStockBajo =
+      totalStock > 0 && totalStock <= alertConfig.cantidadMinimaStock
+
     if (lotesFarmaco.length === 0) {
+      // Para fármacos sin lotes, se usa el stock de la tabla principal.
+      const isStockBajoSinLotes =
+        farmaco.stock > 0 && farmaco.stock <= alertConfig.cantidadMinimaStock
       return [
         {
           id: farmaco.id_farmaco,
@@ -82,7 +111,7 @@ export default function Inventario() {
           precio: 0,
           uni_medida: farmaco.uni_medida,
           estado:
-            farmaco.stock < alertConfig.cantidadMinimaStock
+            isStockBajoSinLotes
               ? "Stock bajo"
               : "Disponible",
           id_lote: undefined, // Aseguramos que siempre exista la propiedad id_lote
@@ -90,12 +119,22 @@ export default function Inventario() {
       ]
     }
     return lotesFarmaco.map((lote) => {
-      const vencimientoDate = new Date(lote.fec_venci)
-      let estado = "Disponible"
-      if (vencimientoDate <= limitDate && vencimientoDate >= today) {
-        estado = "Proximo a vencer"
-      } else if (lote.cantidad < alertConfig.cantidadMinimaStock) {
-        estado = "Stock bajo"
+      // Corrección para el manejo de fechas y evitar problemas de zona horaria.
+      const vencimientoParts = lote.fec_venci.split('-').map(Number);
+      const vencimientoDate = new Date(vencimientoParts[0], vencimientoParts[1] - 1, vencimientoParts[2]);
+
+      const isProximoAVencer = vencimientoDate <= limitDate && vencimientoDate >= today;
+      
+      let estado = "Disponible";
+
+      // Lógica de estado con prioridades claras:
+      // 1. Stock bajo (crítico) se aplica a todos los lotes del fármaco.
+      if (isStockBajo) {
+        estado = "Stock bajo";
+      } 
+      // 2. Si el stock no es bajo, se verifica si el lote individual está próximo a vencer.
+      else if (isProximoAVencer) {
+        estado = "Proximo a vencer";
       }
 
       return {
@@ -106,7 +145,7 @@ export default function Inventario() {
         categoria: farmaco.categoria,
         stock: lote.cantidad,
         vencimiento: lote.fec_venci,
-        precio: lote.precio || 0,
+        precio: precioFarmaco, // Mostrar el precio unificado
         uni_medida: farmaco.uni_medida,
         estado,
         id_lote: lote.id_lote, // Agregamos el id del lote para poder editarlo
@@ -189,7 +228,19 @@ export default function Inventario() {
           { header: "Lote", render: item => item.lote, sortKey: "lote" },
           { header: "Categoría", render: item => item.categoria, sortKey: "categoria" },
           { header: "Stock", render: item => item.stock, sortKey: "stock" },
-          { header: "Vencimiento", render: item => item.vencimiento, sortKey: "vencimiento" },
+          {
+            header: "Vencimiento",
+            render: (item) => {
+              if (!item.vencimiento || item.vencimiento === "-") return "-";
+              try {
+                const [year, month, day] = item.vencimiento.split("-");
+                return `${day}-${month}-${year}`;
+              } catch (e) {
+                return item.vencimiento;
+              }
+            },
+            sortKey: "vencimiento",
+          },
           { header: "Precio", render: item => `$${item.precio || 0}`, sortKey: "precio" },
           {
             header: "Estado",

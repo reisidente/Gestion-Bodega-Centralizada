@@ -41,15 +41,21 @@ export function OrdenCompraModal({
 
   useEffect(() => {
     if (open) {
-      supabase.from("solicitud").select("cod_sol").order("id_sol", { ascending: false }).limit(1).then(({ data }) => {
-        const last = data && data[0]?.cod_sol
-        let next = "S-0001"
-        if (last && /^S-\d+$/.test(last)) {
-          const num = parseInt(last.split("-")[1]) + 1
-          next = `S-${num.toString().padStart(4, "0")}`
-        }
-        setForm(f => ({ ...f, cod_sol: next }))
-      })
+      supabase
+        .from("solicitud")
+        .select("cod_sol")
+        .like("cod_sol", "C-%")
+        .order("id_sol", { ascending: false })
+        .limit(1)
+        .then(({ data }) => {
+          const last = data && data[0]?.cod_sol
+          let next = "C-0001"
+          if (last && /^C-\d+$/.test(last)) {
+            const num = parseInt(last.split("-")[1]) + 1
+            next = `C-${num.toString().padStart(4, "0")}`
+          }
+          setForm(f => ({ ...f, cod_sol: next }))
+        })
     }
   }, [open])
 
@@ -74,7 +80,7 @@ export function OrdenCompraModal({
       fec_cierre: null,
       farmacia_id_farmacia: form.farmacia_id_farmacia,
       motivo: form.motivo,
-      medicamentos: form.medicamentos
+      medicamentos: form.medicamentos,
     })
     onClose()
   }

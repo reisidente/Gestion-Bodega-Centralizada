@@ -13,7 +13,7 @@ export default function Alertas() {
   const [alertas, setAlertas] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [config, setConfig] = useState(() => {
-    const savedConfig = localStorage.getItem("configAlertas")
+    const savedConfig = localStorage.getItem("alertConfig")
     return savedConfig
       ? JSON.parse(savedConfig)
       : {
@@ -46,7 +46,7 @@ export default function Alertas() {
     diasVencimiento: number
     cantidadMinimaStock: number
   }) => {
-    localStorage.setItem("configAlertas", JSON.stringify(newConfig))
+    localStorage.setItem("alertConfig", JSON.stringify(newConfig))
     setConfig(newConfig)
     setModalConfig(false)
     setLoading(true)

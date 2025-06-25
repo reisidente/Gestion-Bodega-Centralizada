@@ -4,6 +4,7 @@ import { supabase } from "../../libs/supabase"
 
 interface FarmacoDetalle {
   id_detalle?: number
+  id_farmaco?: number
   farmaco: string
   cantidadSolicitada: number
   cantidadAprobada?: number | null
@@ -21,6 +22,7 @@ interface DetalleSolicitudModalProps {
     fechaCreacion: string
     estado: string
     prioridad: string
+    motivo?: string
     fechaAprobacion?: string
     notas?: string
     farmacos: FarmacoDetalle[]
@@ -37,61 +39,178 @@ export function DetalleSolicitudModal({
   const [farmacos, setFarmacos] = useState<FarmacoDetalle[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Variable para determinar si la solicitud está completada
-  const isCompletada = solicitud.estado === "Completada";
+  const isCompletada = solicitud.estado === "Completada"
+  const isOrdenCompra = solicitud.id.startsWith("C-")
 
   useEffect(() => {
-    // Cuando la solicitud (prop) cambia, actualizamos el estado interno de los fármacos
     if (solicitud && solicitud.farmacos) {
-      setFarmacos(solicitud.farmacos.map(f => ({
-        ...f,
-        cantidadADespachar: f.cantidadAprobada ?? f.cantidadSolicitada ?? 0
-      })))
+      if (isCompletada) {
+        // Si la solicitud está completada, mostrar todos los fármacos despachados.
+        const farmacosDespachados = solicitud.farmacos.filter(
+          (f) => f.estado === "Despachado"
+        )
+        setFarmacos(farmacosDespachados)
+      } else {
+        // Si está pendiente, mostrar solo los fármacos pendientes para despachar.
+        const farmacosPendientes = solicitud.farmacos
+          .filter((f) => f.estado === "Pendiente")
+          .map((f) => ({
+            ...f,
+            // Para órdenes de compra, la cantidad a despachar es la solicitada.
+            cantidadADespachar: isOrdenCompra ? f.cantidadSolicitada : 0,
+          }))
+        setFarmacos(farmacosPendientes)
+      }
     }
-  }, [solicitud]) // Este efecto se ejecuta cada vez que la prop `solicitud` cambia
+  }, [solicitud, isCompletada, isOrdenCompra])
 
   const handleCantidadChange = (idx: number, value: number) => {
-    setFarmacos(prev => prev.map((f, i) => i === idx ? { ...f, cantidadADespachar: value } : f))
-  }
+    // No permitir cambios en órdenes de compra
+    if (isOrdenCompra) return
 
-  const handleDespachar = (idx: number) => {
-    setFarmacos(prev => prev.map((f, i) => i === idx ? { ...f, estado: "Despachado" } : f))
+    setFarmacos((prev) =>
+      prev.map((f, i) => (i === idx ? { ...f, cantidadADespachar: value } : f))
+    )
   }
 
   const handleGuardar = async () => {
     setLoading(true)
+
+    const promises = []
+
     for (const f of farmacos) {
-      if (f.id_detalle) {
-        await supabase.from("detalle_solicitud").update({
-          cant_despacho: f.cantidadADespachar,
-          fec_despacho: new Date().toISOString().slice(0, 10),
-          estado_fmc: f.estado
-        }).eq("id_detalle", f.id_detalle)
+      if (!f.id_detalle || !f.id_farmaco || !solicitud.id_sol) continue
+
+      const aDespachar = f.cantidadADespachar || 0
+      const originalPendiente = f.cantidadSolicitada
+
+      if (aDespachar <= 0) continue
+
+      if (aDespachar > originalPendiente) {
+        alert(`No se puede despachar más de lo solicitado para ${f.farmaco}.`)
+        continue
+      }
+
+      // Si NO es una orden de compra, se actualiza el inventario
+      if (!isOrdenCompra) {
+        // --- INVENTORY UPDATE LOGIC ---
+        // 1. Fetch lots and check for sufficient stock
+        const { data: lotes, error: lotesError } = await supabase
+          .from("lote")
+          .select("id_lote, cantidad")
+          .eq("farmaco_id_farmaco", f.id_farmaco)
+          .gt("cantidad", 0)
+          .order("fec_venci", { ascending: true })
+
+        if (lotesError) {
+          console.error(`Error fetching lotes for farmaco ${f.id_farmaco}:`, lotesError)
+          alert(`Error al obtener lotes para ${f.farmaco}. No se pudo continuar.`)
+          setLoading(false)
+          return
+        }
+
+        const stockTotalDisponible = lotes?.reduce((sum, l) => sum + l.cantidad, 0) || 0
+        if (aDespachar > stockTotalDisponible) {
+          alert(`Stock insuficiente para ${f.farmaco}. Solicitado: ${aDespachar}, Disponible: ${stockTotalDisponible}`)
+          continue // Skip this farmaco and check the next one
+        }
+
+        // 2. Distribute dispatch quantity among lots (FEFO)
+        let cantidadRestanteADespachar = aDespachar
+        for (const lote of lotes) {
+          if (cantidadRestanteADespachar <= 0) break
+          const cantidadEnLote = lote.cantidad
+          const aDescontar = Math.min(cantidadRestanteADespachar, cantidadEnLote)
+          promises.push(
+            supabase
+              .from("lote")
+              .update({ cantidad: cantidadEnLote - aDescontar })
+              .eq("id_lote", lote.id_lote)
+          )
+          cantidadRestanteADespachar -= aDescontar
+        }
+        
+        // 3. Update total stock in farmaco table
+        const { data: farmaco, error: farmacoError } = await supabase
+          .from("farmaco")
+          .select("stock")
+          .eq("id_farmaco", f.id_farmaco)
+          .single()
+
+        if (farmaco && !farmacoError) {
+          const nuevoStockTotal = Math.max(0, farmaco.stock - aDespachar)
+          promises.push(
+            supabase
+              .from("farmaco")
+              .update({ stock: nuevoStockTotal })
+              .eq("id_farmaco", f.id_farmaco)
+          )
+        } else if (farmacoError) {
+          console.error(`Error fetching farmaco stock for ${f.id_farmaco}:`, farmacoError)
+        }
+        // --- END INVENTORY UPDATE ---
+      }
+
+      // Update original detail line
+      promises.push(
+        supabase
+          .from("detalle_solicitud")
+          .update({
+            cant_despacho: aDespachar,
+            estado_fmc: "Despachado",
+            fec_despacho: new Date().toISOString().slice(0, 10),
+          })
+          .eq("id_detalle", f.id_detalle)
+      )
+
+      // Create new detail line for remaining quantity
+      const cantidadRestante = originalPendiente - aDespachar
+      if (cantidadRestante > 0) {
+        promises.push(
+          supabase.from("detalle_solicitud").insert({
+            solicitud_id_sol: solicitud.id_sol,
+            id_farmaco: f.id_farmaco,
+            cant_despacho: cantidadRestante,
+            estado_fmc: "Pendiente",
+          })
+        )
       }
     }
 
-    // Verificar si todos los fármacos están despachados
-    const todosDespachados = farmacos.every(f => f.estado === "Despachado");
+    await Promise.all(promises)
 
-    if (todosDespachados && solicitud.id_sol) {
-      // Actualizar el estado de la solicitud a "Completada"
-      await supabase
-        .from("solicitud")
-        .update({ estado: "Completada" })
-        .eq("id_sol", solicitud.id_sol);
+    // Check if the entire request is complete
+    if (solicitud.id_sol) {
+      const { data: pendientes, error } = await supabase
+        .from("detalle_solicitud")
+        .select("id_detalle")
+        .eq("solicitud_id_sol", solicitud.id_sol)
+        .eq("estado_fmc", "Pendiente")
+
+      if (!error) {
+        const nuevoEstado = pendientes.length === 0 ? "Completada" : "Pendiente"
+        await supabase
+          .from("solicitud")
+          .update({ estado: nuevoEstado })
+          .eq("id_sol", solicitud.id_sol)
+      }
     }
 
     setLoading(false)
-    onSave?.(farmacos)
+    onSave?.({})
     onClose()
   }
 
-  const totalSolicitados = farmacos.reduce((acc, f) => acc + f.cantidadSolicitada, 0)
-
   return (
     <BaseModal open={open} onClose={onClose} widthClass="max-w-3xl">
-      <h2 className="text-2xl font-bold mb-1">Solicitud: {solicitud.id}</h2>
-      <p className="text-gray-500 mb-6">Detalles de la solicitud de despacho</p>
+      <h2 className="text-2xl font-bold mb-1">
+        {isOrdenCompra ? "Orden de Compra" : "Solicitud"}: {solicitud.id}
+      </h2>
+      <p className="text-gray-500 mb-6">
+        {isOrdenCompra
+          ? "Detalles de la orden de compra"
+          : "Detalles de la solicitud de despacho"}
+      </p>
 
       {/* Información de la Solicitud */}
       <div className="mb-6 border-b pb-4">
@@ -108,7 +227,7 @@ export function DetalleSolicitudModal({
           <div>
             <div className="text-gray-500">Estado</div>
             <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-              {solicitud.estado}
+              {isOrdenCompra && solicitud.estado === 'Completada' ? 'Solicitado' : solicitud.estado}
             </span>
           </div>
           <div>
@@ -117,6 +236,12 @@ export function DetalleSolicitudModal({
               {solicitud.prioridad}
             </span>
           </div>
+          {solicitud.motivo && (
+            <div>
+              <div className="text-gray-500">Motivo</div>
+              <div>{solicitud.motivo}</div>
+            </div>
+          )}
           {solicitud.fechaAprobacion && (
             <div>
               <div className="text-gray-500">Fecha de Aprobación</div>
@@ -134,58 +259,83 @@ export function DetalleSolicitudModal({
 
       {/* Detalles de la Solicitud */}
       <div>
-        <h3 className="font-semibold text-2xl mb-1">Detalles de la Solicitud</h3>
-        <p className="text-gray-400 mb-4">Fármacos solicitados</p>
+        <h3 className="font-semibold text-2xl mb-1">
+          {isCompletada
+            ? isOrdenCompra ? "Resumen de Orden" : "Resumen de Despacho"
+            : isOrdenCompra
+            ? "Fármacos a Solicitar"
+            : "Fármacos Pendientes"}
+        </h3>
+        <p className="text-gray-400 mb-4">
+          {isCompletada
+            ? isOrdenCompra ? "Detalle de los fármacos solicitados en esta orden." : "Detalle de los fármacos despachados en esta solicitud."
+            : isOrdenCompra
+            ? "Detalle de los fármacos solicitados en esta orden."
+            : "Ingrese la cantidad a despachar para cada fármaco."}
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full text-base">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left font-medium text-gray-500 py-2">Fármaco</th>
-                <th className="text-left font-medium text-gray-500 py-2">Cantidad Solicitada</th>
-                <th className="text-left font-medium text-gray-500 py-2">Cantidad a Despachar</th>
-                <th className="text-left font-medium text-gray-500 py-2">Estado</th>
-                <th className="text-left font-medium text-gray-500 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {farmacos.map((f, idx) => (
-                <tr key={f.id_detalle || idx} className="border-b last:border-b-0">
-                  <td className="py-4">{f.farmaco}</td>
-                  <td className="py-4">{f.cantidadSolicitada}</td>
-                  <td className="py-4">
-                    <input
-                      type="number"
-                      min={0}
-                      max={f.cantidadSolicitada}
-                      value={f.cantidadADespachar}
-                      onChange={e => handleCantidadChange(idx, Number(e.target.value))}
-                      className="border rounded px-2 py-1 w-20"
-                      disabled={isCompletada} // Deshabilitar si está completada
-                    />
-                  </td>
-                  <td className="py-4">
-                    <span className="inline-block bg-black text-white px-4 py-1 rounded-full text-base font-semibold">
-                      {f.estado}
-                    </span>
-                  </td>
-                  <td className="py-4">
-                    {!isCompletada && (
-                      <button
-                        className="text-black font-medium hover:underline"
-                        type="button"
-                        onClick={() => handleDespachar(idx)}
-                      >
-                        Despachar
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            {isCompletada ? (
+              <>
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left font-medium text-gray-500 py-2">Fármaco</th>
+                    <th className="text-left font-medium text-gray-500 py-2">
+                      {isOrdenCompra ? "Cantidad Solicitada" : "Cantidad Despachada"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {farmacos.map((f) => (
+                    <tr key={f.id_detalle} className="border-b last:border-b-0">
+                      <td className="py-4">{f.farmaco}</td>
+                      <td className="py-4">{f.cantidadSolicitada}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left font-medium text-gray-500 py-2">Fármaco</th>
+                    <th className="text-left font-medium text-gray-500 py-2">
+                      {isOrdenCompra ? "Cantidad Solicitada" : "Cantidad Pendiente"}
+                    </th>
+                    <th className="text-left font-medium text-gray-500 py-2">
+                      {isOrdenCompra ? "Cantidad a Solicitar" : "Cantidad a Despachar"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {farmacos.map((f, idx) => (
+                    <tr key={f.id_detalle} className="border-b last:border-b-0">
+                      <td className="py-4">{f.farmaco}</td>
+                      <td className="py-4">{f.cantidadSolicitada}</td>
+                      <td className="py-4">
+                        <input
+                          type="number"
+                          min={0}
+                          max={f.cantidadSolicitada}
+                          value={f.cantidadADespachar}
+                          onChange={(e) => handleCantidadChange(idx, Number(e.target.value))}
+                          className="border rounded px-2 py-1 w-24"
+                          disabled={isCompletada || isOrdenCompra}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </>
+            )}
           </table>
-          <div className="text-gray-400 text-base mt-4">
-            Total de fármacos: {farmacos.length} | Cantidad total: {totalSolicitados}
-          </div>
+          {farmacos.length === 0 && (
+            <p className="text-center py-4 text-gray-500">
+              {isCompletada
+                ? isOrdenCompra ? "No se encontraron fármacos en la orden." : "No se encontraron fármacos despachados."
+                : "No hay fármacos pendientes en esta solicitud."}
+            </p>
+          )}
         </div>
       </div>
 

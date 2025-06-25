@@ -21,7 +21,7 @@ export default function Solicitudes() {
     const fetchSolicitudes = async () => {
       const { data: solicitudesData, error: solError } = await supabase
         .from("solicitud")
-        .select("*, farmacia: farmacia_id_farmacia (nom_farma)")
+        .select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)")
       if (solError) console.error("Error fetching solicitudes:", solError)
 
       const { data: detallesData, error: detError } = await supabase
@@ -45,6 +45,39 @@ export default function Solicitudes() {
         fechaDespacho = detalleConFecha.fec_despacho
       }
     }
+
+    let farmacosData
+
+    if (sol.estado === 'Completada') {
+      const farmacosAgrupados = detalles.reduce((acc, d) => {
+        if (d.estado_fmc === 'Despachado') {
+          if (!acc[d.id_farmaco]) {
+            acc[d.id_farmaco] = {
+              id_detalle: d.id_detalle,
+              id_farmaco: d.id_farmaco,
+              farmaco: d.farmaco?.nombre || "-",
+              cantidadSolicitada: 0,
+              cantidadAprobada: null,
+              estado: "Despachado",
+            }
+          }
+          acc[d.id_farmaco].cantidadSolicitada += d.cant_despacho
+        }
+        return acc
+      }, {} as Record<string, any>)
+
+      farmacosData = Object.values(farmacosAgrupados)
+    } else {
+      farmacosData = detalles.map(d => ({
+        id_detalle: d.id_detalle,
+        id_farmaco: d.id_farmaco,
+        farmaco: d.farmaco?.nombre || "-",
+        cantidadSolicitada: d.cant_despacho,
+        cantidadAprobada: null,
+        estado: d.estado_fmc,
+      }))
+    }
+
     return {
       id: sol.cod_sol,
       cod_sol: sol.cod_sol,
@@ -55,14 +88,9 @@ export default function Solicitudes() {
       fechaDespacho,
       estado: sol.estado,
       prioridad: sol.prioridad,
+      motivo: sol.motivo,
       cantidad: sol.cant_sol,
-      farmacos: detalles.map(d => ({
-        id_detalle: d.id_detalle,
-        farmaco: d.farmaco?.nombre || "-",
-        cantidadSolicitada: d.cant_despacho,
-        cantidadAprobada: null,
-        estado: d.estado_fmc,
-      }))
+      farmacos: farmacosData,
     }
   })
 
@@ -202,11 +230,11 @@ export default function Solicitudes() {
           prioridad: "",
           farmacos: [],
         }}
-        onSave={async (solicitudActualizada) => {
+        onSave={async () => {
           setModalDetalle({ open: false });
 
           // Refrescar la data para ver los cambios en tiempo real
-          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
           const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
 
           setSolicitudes(solicitudesData || []);
@@ -240,7 +268,7 @@ export default function Solicitudes() {
           }
           setModalOrdenDespacho(false);
           // Refrescar solicitudes
-          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
           const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
@@ -273,7 +301,7 @@ export default function Solicitudes() {
           }
           setModalOrdenCompra(false);
           // Refrescar solicitudes
-          const { data: solicitudesData } = await supabase.from("solicitud").select("*, farmacia: farmacia_id_farmacia (nom_farma)");
+          const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
           const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);

@@ -2,14 +2,15 @@ import type { ReactNode } from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X } from "lucide-react"
+import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X, LogOut } from "lucide-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { useIsAdmin } from "../../hooks/useIsAdmin"
+import { supabase } from "../../libs/supabase"
 
 interface SidebarProps {
   activeSection: string
-  children?: ReactNode // Permite renderizar el contenido principal al lado del sidebar
+  children?: ReactNode
 }
 
 const menuItems = [
@@ -26,90 +27,113 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
   const navigate = useNavigate()
   const { isAdmin } = useIsAdmin()
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate("/")
+  }
+
   return (
     <div className="min-h-screen flex">
       <motion.div
-        className={`fixed left-0 top-0 h-full bg-white/80 backdrop-blur-md border-r border-gray-200/50 z-40 transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full bg-white/80 backdrop-blur-md border-r border-gray-200/50 z-40 flex flex-col justify-between transition-all duration-300 ${
           isCollapsed ? "w-16" : "w-64"
         }`}
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200/50">
-          <div className="flex items-center justify-between">
-            {!isCollapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-                  <Plus className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-gray-900">GBFC</span>
-              </motion.div>
-            )}
-            <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">
-              {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
-            </Button>
+        <div>
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200/50">
+            <div className="flex items-center justify-between">
+              {!isCollapsed && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="font-semibold text-gray-900">GBFC</span>
+                </motion.div>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">
+                {isCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
+
+          {/* Search */}
+          {!isCollapsed && (
+            <motion.div
+              className="p-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-9 bg-gray-50/50"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Navigation */}
+          <nav className="p-2">
+            {menuItems.map((item, index) => (
+              <motion.button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 ${
+                  activeSection === item.id
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * index }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+              </motion.button>
+            ))}
+            {/* Enlace solo visible para administradores */}
+            {isAdmin && (
+              <motion.button
+                onClick={() => navigate("/nuevo-usuario")}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.7 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Plus className="h-4 w-4 flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">Nuevo Usuario</span>}
+              </motion.button>
+            )}
+          </nav>
         </div>
 
-        {/* Search */}
-        {!isCollapsed && (
-          <motion.div
-            className="p-4"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+        {/* Logout Button */}
+        <div className="p-2 border-t border-gray-200/50">
+          <motion.button
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 text-gray-600 hover:bg-red-100 hover:text-red-600`}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.8 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9 bg-gray-50/50"
-              />
-            </div>
-          </motion.div>
-        )}
-
-        {/* Navigation */}
-        <nav className="p-2">
-          {menuItems.map((item, index) => (
-            <motion.button
-              key={item.id}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 ${
-                activeSection === item.id
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * index }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
-            </motion.button>
-          ))}
-          {/* Enlace solo visible para administradores */}
-          {isAdmin && (
-            <motion.button
-              onClick={() => navigate("/nuevo-usuario")}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Plus className="h-4 w-4 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">Nuevo Usuario</span>}
-            </motion.button>
-          )}
-        </nav>
+            <LogOut className="h-4 w-4 flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">Cerrar Sesión</span>}
+          </motion.button>
+        </div>
       </motion.div>
       <main className="flex-1 ml-16 md:ml-64 transition-all duration-300">{children}</main>
     </div>
