@@ -13,6 +13,7 @@ interface FormFieldProps {
   error?: string
   showPasswordToggle?: boolean
   onTogglePassword?: () => void
+  required?: boolean
 }
 
 export function FormField({
@@ -24,6 +25,7 @@ export function FormField({
   error,
   showPasswordToggle = false,
   onTogglePassword,
+  required = true, // Por defecto, los campos son requeridos
 }: FormFieldProps) {
   return (
     <motion.div
@@ -42,11 +44,8 @@ export function FormField({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`h-11 bg-white/50 backdrop-blur-sm border transition-all duration-300 ${
-            error
-              ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-              : "border-gray-200 focus:border-gray-400 focus:ring-gray-100 hover:border-gray-300"
-          }`}
+          className={`w-full ${error ? "border-red-500" : ""}`}
+          required={required} // Aplicar el prop 'required'
         />
         {showPasswordToggle && (
           <Button

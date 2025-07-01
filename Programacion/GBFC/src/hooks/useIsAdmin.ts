@@ -7,16 +7,29 @@ export function useIsAdmin() {
 
   useEffect(() => {
     const check = async () => {
+      // Primero intentar con Supabase Auth
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      let uid = user?.id
+      
+      // Si no hay usuario en Supabase Auth, usar sesión local
+      if (!uid) {
+        const localSession = localStorage.getItem('userSession')
+        if (localSession) {
+          const session = JSON.parse(localSession)
+          uid = session.uid
+        }
+      }
+      
+      if (!uid) {
         setIsAdmin(false)
         setLoading(false)
         return
       }
+      
       const { data, error } = await supabase
         .from('usuario')
         .select('rol_id_rol')
-        .eq('uid', user.id)
+        .eq('uid', uid)
         .single()
       setIsAdmin(!error && data && data.rol_id_rol === 1)
       setLoading(false)

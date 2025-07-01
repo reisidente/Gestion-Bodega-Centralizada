@@ -6,15 +6,14 @@ import { Button } from "../ui/button"
 interface Farmaco {
   id_farmaco: number
   codigo: string
-  nombre: string
+  nombre_comercial: string
   categoria: string
-  stock: number
 }
 
 interface Seleccion {
   id_farmaco: number
   codigo: string
-  nombre: string
+  nombre_comercial: string
   cantidad: number
 }
 
@@ -29,7 +28,7 @@ export function SelectorFarmacos({ value, onChange }: SelectorFarmacosProps) {
 
   useEffect(() => {
     const fetchFarmacos = async () => {
-      const { data } = await supabase.from("farmaco").select("id_farmaco, codigo, nombre, categoria, stock")
+      const { data } = await supabase.from("farmaco").select("id_farmaco, codigo, nombre_comercial, categoria")
       setFarmacos(data || [])
     }
     fetchFarmacos()
@@ -51,7 +50,7 @@ export function SelectorFarmacos({ value, onChange }: SelectorFarmacosProps) {
 
   const filtered = farmacos.filter(f =>
     f.codigo.toLowerCase().includes(search.toLowerCase()) ||
-    f.nombre.toLowerCase().includes(search.toLowerCase())
+    f.nombre_comercial.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -68,9 +67,8 @@ export function SelectorFarmacos({ value, onChange }: SelectorFarmacosProps) {
       <TableContainer
         columns={[
           { header: "Código", render: f => f.codigo },
-          { header: "Nombre", render: f => f.nombre },
+          { header: "Nombre", render: f => f.nombre_comercial },
           { header: "Categoría", render: f => f.categoria },
-          { header: "Stock", render: f => f.stock },
           {
             header: "Seleccionar",
             render: f => (
@@ -90,7 +88,7 @@ export function SelectorFarmacos({ value, onChange }: SelectorFarmacosProps) {
           <TableContainer
             columns={[
               { header: "Código", render: f => f.codigo },
-              { header: "Nombre", render: f => f.nombre },
+              { header: "Nombre", render: f => f.nombre_comercial },
               {
                 header: "Cantidad solicitada",
                 render: f => (

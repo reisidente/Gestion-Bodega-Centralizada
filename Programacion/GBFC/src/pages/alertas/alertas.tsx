@@ -5,6 +5,7 @@ import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
 import { ConfigAlertasModal } from "../../components/modals/configurar_alertas"
 import { supabase } from "../../libs/supabase"
+import { getFechaLocal } from "../../libs/utils"
 
 export default function Alertas() {
   const [SelectedCategory, setSelectedCategory] = useState("Todas")
@@ -26,7 +27,7 @@ export default function Alertas() {
     setLoading(true)
     const { data: alertasData, error } = await supabase
       .from("alerta")
-      .select("*, farmaco: farmaco_id_farmaco (id_farmaco, nombre)")
+      .select("*, farmaco: farmaco_id_farmaco (id_farmaco, nombre_comercial)")
 
     if (error) {
       console.error("Error fetching alerts:", error)
@@ -65,7 +66,7 @@ export default function Alertas() {
     // 2. Fetch farmacos and lotes
     const { data: farmacosData, error: farmacosError } = await supabase
       .from("farmaco")
-      .select("id_farmaco, nombre")
+      .select("id_farmaco, nombre_comercial")
 
     if (farmacosError) {
       console.error("Error fetching farmacos:", farmacosError)
@@ -113,8 +114,8 @@ export default function Alertas() {
           generatedAlertsToInsert.push({
             tipo_alerta: "Stock",
             nivel: "Medio",
-            mensaje: `Stock bajo para ${farmaco.nombre}. Cantidad actual: ${stockActual}, Mínimo configurado: ${newConfig.cantidadMinimaStock}`,
-            fec_creacion: new Date().toISOString().slice(0, 10),
+            mensaje: `Stock bajo para ${farmaco.nombre_comercial}. Cantidad actual: ${stockActual}, Mínimo configurado: ${newConfig.cantidadMinimaStock}`,
+            fec_creacion: getFechaLocal(),
             fec_vencimiento: "9999-12-31",
             cant_actual: stockActual,
             farmaco_id_farmaco: farmaco.id_farmaco,
@@ -145,8 +146,8 @@ export default function Alertas() {
             generatedAlertsToInsert.push({
               tipo_alerta: "Vencimiento",
               nivel: "Alto",
-              mensaje: `El lote ${lote.num_lote} de ${farmaco.nombre} está próximo a vencer.`,
-              fec_creacion: new Date().toISOString().slice(0, 10),
+              mensaje: `El lote ${lote.num_lote} de ${farmaco.nombre_comercial} está próximo a vencer.`,
+              fec_creacion: getFechaLocal(),
               fec_vencimiento: lote.fec_venci,
               cant_actual: lote.cantidad,
               farmaco_id_farmaco: farmaco.id_farmaco,
@@ -184,8 +185,6 @@ export default function Alertas() {
         return "warning"
       case "Bajo":
         return "secondary"
-      default:
-        return "secondary"
     }
   }
 
@@ -195,8 +194,6 @@ export default function Alertas() {
         return "warning"
       case "Stock bajo":
         return "destructive"
-      default:
-        return "secondary"
     }
   }
 

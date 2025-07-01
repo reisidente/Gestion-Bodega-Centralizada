@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BaseModal } from "./base"
+import { supabase } from "../../libs/supabase"
 
 interface ParametrosStockBajo {
   ordenarPor?: string
@@ -55,6 +56,22 @@ const initialState = {
 
 export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModalProps) {
   const [data, setData] = useState(initialState)
+  const [farmacias, setFarmacias] = useState<any[]>([])
+
+  // Cargar farmacias cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      const fetchFarmacias = async () => {
+        const { data: farmaciasData } = await supabase
+          .from("farmacia")
+          .select("id_farmacia, nom_farma")
+          .order("nom_farma")
+        
+        setFarmacias(farmaciasData || [])
+      }
+      fetchFarmacias()
+    }
+  }, [open])
 
   const handleChange = (field: string, value: any) => {
     setData(prev => ({
@@ -190,7 +207,11 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
                 onChange={e => handleParametro("farmacia", e.target.value)}
               >
                 <option value="">Todas las farmacias</option>
-                {/* Agrega aquí las farmacias disponibles */}
+                {farmacias.map(farmacia => (
+                  <option key={farmacia.id_farmacia} value={farmacia.id_farmacia}>
+                    {farmacia.nom_farma}
+                  </option>
+                ))}
               </select>
               <div className="text-gray-400 text-sm mt-1">
                 Filtrar movimientos por farmacia destino

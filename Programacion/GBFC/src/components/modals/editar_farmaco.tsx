@@ -16,7 +16,7 @@ export function EditFarmacoModal({
   initialData,
 }: EditarFarmacoModalProps) {
   const [form, setForm] = useState({
-    nombre: "",
+    nombre_comercial: "",
     categoria: "",
     codigo: "",
     uni_medida: "",
@@ -46,7 +46,7 @@ export function EditFarmacoModal({
   useEffect(() => {
     if (initialData) {
       setForm({
-        nombre: initialData.nombre || "",
+        nombre_comercial: initialData.nombre || initialData.nombre_comercial || "",
         categoria: initialData.categoria || "",
         codigo: initialData.codigo || "",
         uni_medida: initialData.uni_medida || "",
@@ -79,11 +79,11 @@ export function EditFarmacoModal({
             />
           </div>
           <div>
-            <label className="block font-medium mb-1">Nombre</label>
+            <label className="block font-medium mb-1">Nombre Comercial</label>
             <input
-              name="nombre"
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              name="nombre_comercial"
+              value={form.nombre_comercial}
+              onChange={(e) => setForm({ ...form, nombre_comercial: e.target.value })}
               className="w-full border rounded-md px-3 py-2"
               required
             />

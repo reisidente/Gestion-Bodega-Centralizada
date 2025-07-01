@@ -7,6 +7,7 @@ import { DetalleSolicitudModal } from "../../components/modals/detalle_solicitud
 import { OrdenDespachoModal } from "../../components/modals/orden_despacho"
 import { OrdenCompraModal } from "../../components/modals/orden_compra"
 import { supabase } from "../../libs/supabase"
+import { getFechaLocal } from "../../libs/utils"
 
 export default function Solicitudes() {
   const [selectedCategory, setSelectedCategory] = useState("Todas")
@@ -26,7 +27,7 @@ export default function Solicitudes() {
 
       const { data: detallesData, error: detError } = await supabase
         .from("detalle_solicitud")
-        .select("*, farmaco: id_farmaco (nombre)")
+        .select("*, farmaco: id_farmaco (nombre_comercial)")
       if (detError) console.error("Error fetching detalles:", detError)
 
       setSolicitudes(solicitudesData || [])
@@ -55,7 +56,7 @@ export default function Solicitudes() {
             acc[d.id_farmaco] = {
               id_detalle: d.id_detalle,
               id_farmaco: d.id_farmaco,
-              farmaco: d.farmaco?.nombre || "-",
+              farmaco: d.farmaco?.nombre_comercial || "-",
               cantidadSolicitada: 0,
               cantidadAprobada: null,
               estado: "Despachado",
@@ -71,7 +72,7 @@ export default function Solicitudes() {
       farmacosData = detalles.map(d => ({
         id_detalle: d.id_detalle,
         id_farmaco: d.id_farmaco,
-        farmaco: d.farmaco?.nombre || "-",
+        farmaco: d.farmaco?.nombre_comercial || "-",
         cantidadSolicitada: d.cant_despacho,
         cantidadAprobada: null,
         estado: d.estado_fmc,
@@ -108,11 +109,11 @@ export default function Solicitudes() {
 
   const getPriorityColor = (prioridad: string) => {
     switch (prioridad) {
-      case "Alta":
+      case "Urgente":
         return "destructive"
-      case "Media":
+      case "Normal":
         return "warning"
-      case "Baja":
+      default:
         return "secondary"
     }
   }
@@ -235,7 +236,7 @@ export default function Solicitudes() {
 
           // Refrescar la data para ver los cambios en tiempo real
           const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre_comercial)");
 
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
@@ -247,9 +248,17 @@ export default function Solicitudes() {
         onClose={() => setModalOrdenDespacho(false)}
         onCrear={async (form) => {
           // Insertar solicitud en Supabase con los datos correctos
-          const { medicamentos, ...solicitudPayload } = form;
+          const { medicamentos, fec_creacion, ...solicitudPayload } = form;
+          
+          // Siempre usar la fecha del sistema, ignorando la del formulario
+          const solicitudConFecha = {
+            ...solicitudPayload,
+            fec_creacion: getFechaLocal(), // Fecha actual del sistema en formato YYYY-MM-DD
+            estado: 'Pendiente' // Asegurar que el estado sea Pendiente
+          };
+          
           const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
-            solicitudPayload
+            solicitudConFecha
           ]).select().single();
           if (error || !nuevaSolicitud) {
             alert("Error al crear solicitud");
@@ -269,7 +278,7 @@ export default function Solicitudes() {
           setModalOrdenDespacho(false);
           // Refrescar solicitudes
           const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre_comercial)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
         }}
@@ -281,8 +290,15 @@ export default function Solicitudes() {
         onEnviar={async (form) => {
           // Insertar solicitud de compra en Supabase con los datos correctos
           const { medicamentos, ...solicitudPayload } = form;
+          
+          // Agregar la fecha de creación del sistema
+          const solicitudConFecha = {
+            ...solicitudPayload,
+            fec_creacion: getFechaLocal() // Fecha actual del sistema en formato YYYY-MM-DD
+          };
+          
           const { data: nuevaSolicitud, error } = await supabase.from("solicitud").insert([
-            solicitudPayload
+            solicitudConFecha
           ]).select().single();
           if (error || !nuevaSolicitud) {
             alert("Error al crear solicitud de compra");
@@ -302,7 +318,7 @@ export default function Solicitudes() {
           setModalOrdenCompra(false);
           // Refrescar solicitudes
           const { data: solicitudesData } = await supabase.from("solicitud").select("*, motivo, farmacia: farmacia_id_farmacia (nom_farma)");
-          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre)");
+          const { data: detallesData } = await supabase.from("detalle_solicitud").select("*, farmaco: id_farmaco (nombre_comercial)");
           setSolicitudes(solicitudesData || []);
           setDetalleSolicitudes(detallesData || []);
         }}

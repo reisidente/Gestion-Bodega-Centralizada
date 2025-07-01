@@ -27,7 +27,6 @@ const ordenStockBajo = [
 ]
 const ordenVencimientos = ["Días restantes"]
 const ordenInventario = ["Categoría"]
-const ordenMovimientos = ["Fecha"]
 
 const getSafeInitialData = (data: any) => ({
   titulo: data.titulo || "",

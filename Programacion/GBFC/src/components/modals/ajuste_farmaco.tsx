@@ -9,13 +9,12 @@ interface AjustarStockModalProps {
     tipo: "Entrada" | "Salida"
     cantidad: number
     motivo: string
-    observaciones: string
   }) => void
 }
 
 const MOTIVO_OPTIONS = {
-  Entrada: ["Compra", "Corrección", "Otro"] as const,
-  Salida: ["Vencimiento", "Corrección", "Otro"] as const,
+  Entrada: ["Compra", "corrección", "Otro"] as const,
+  Salida: ["Vencimiento", "Daño", "Ajuste", "Otro"] as const,
 }
 
 type MotivoEntrada = typeof MOTIVO_OPTIONS.Entrada[number]
@@ -31,7 +30,6 @@ export function AjustarStockModal({
   const [tipo, setTipo] = useState<"Entrada" | "Salida">("Entrada")
   const [cantidad, setCantidad] = useState("1")
   const [motivo, setMotivo] = useState<Motivo>("Compra")
-  const [observaciones, setObservaciones] = useState("")
 
   // Update motivo when tipo changes to ensure a valid option is selected
   const handleTipoChange = (newTipo: "Entrada" | "Salida") => {
@@ -44,7 +42,6 @@ export function AjustarStockModal({
       tipo,
       cantidad: Number(cantidad),
       motivo,
-      observaciones,
     })
     onClose()
   }
@@ -105,16 +102,6 @@ export function AjustarStockModal({
             </option>
           ))}
         </select>
-      </div>
-      <div className="mb-4">
-        <label className="block font-medium mb-1">Observaciones</label>
-        <textarea
-          className="w-full border rounded-md px-3 py-2"
-          rows={3}
-          value={observaciones}
-          onChange={e => setObservaciones(e.target.value)}
-          placeholder="Observaciones adicionales"
-        />
       </div>
       <div className="flex justify-end gap-2 mt-6">
         <button

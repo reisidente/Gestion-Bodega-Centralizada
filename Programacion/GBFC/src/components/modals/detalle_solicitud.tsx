@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { BaseModal } from "./base"
 import { supabase } from "../../libs/supabase"
+import { getFechaLocal } from "../../libs/utils"
 
 interface FarmacoDetalle {
   id_detalle?: number
@@ -121,33 +122,31 @@ export function DetalleSolicitudModal({
           if (cantidadRestanteADespachar <= 0) break
           const cantidadEnLote = lote.cantidad
           const aDescontar = Math.min(cantidadRestanteADespachar, cantidadEnLote)
+          
+          // Actualizar cantidad en lote
           promises.push(
             supabase
               .from("lote")
               .update({ cantidad: cantidadEnLote - aDescontar })
               .eq("id_lote", lote.id_lote)
           )
+          
+          // Registrar el despacho en el historial
+          promises.push(
+            supabase.from("historial_ajuste").insert({
+              tipo_ajuste: "Salida",
+              cant_ajuste: aDescontar,
+              cant_ant: cantidadEnLote,
+              cant_nueva: cantidadEnLote - aDescontar,
+              motivo: "Despacho",
+              fec_ajuste: getFechaLocal(),
+              lote_id_lote: lote.id_lote,
+            })
+          )
+          
           cantidadRestanteADespachar -= aDescontar
         }
         
-        // 3. Update total stock in farmaco table
-        const { data: farmaco, error: farmacoError } = await supabase
-          .from("farmaco")
-          .select("stock")
-          .eq("id_farmaco", f.id_farmaco)
-          .single()
-
-        if (farmaco && !farmacoError) {
-          const nuevoStockTotal = Math.max(0, farmaco.stock - aDespachar)
-          promises.push(
-            supabase
-              .from("farmaco")
-              .update({ stock: nuevoStockTotal })
-              .eq("id_farmaco", f.id_farmaco)
-          )
-        } else if (farmacoError) {
-          console.error(`Error fetching farmaco stock for ${f.id_farmaco}:`, farmacoError)
-        }
         // --- END INVENTORY UPDATE ---
       }
 
@@ -158,7 +157,7 @@ export function DetalleSolicitudModal({
           .update({
             cant_despacho: aDespachar,
             estado_fmc: "Despachado",
-            fec_despacho: new Date().toISOString().slice(0, 10),
+            fec_despacho: getFechaLocal(),
           })
           .eq("id_detalle", f.id_detalle)
       )

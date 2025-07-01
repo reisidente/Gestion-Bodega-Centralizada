@@ -5,25 +5,7 @@ import { Badge } from "../../components/ui/badge"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "../../libs/supabase"
 import { SmoothBackground } from "../../components/animations/smooth-bachground"
-
-// Función para dar formato al tiempo como "hace X minutos"
-const formatTimeAgo = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  let interval = seconds / 31536000
-  if (interval > 1) return `hace ${Math.floor(interval)} años`
-  interval = seconds / 2592000
-  if (interval > 1) return `hace ${Math.floor(interval)} meses`
-  interval = seconds / 86400
-  if (interval > 1) return `hace ${Math.floor(interval)} días`
-  interval = seconds / 3600
-  if (interval > 1) return `hace ${Math.floor(interval)} horas`
-  interval = seconds / 60
-  if (interval >= 1) return `hace ${Math.floor(interval)} min`
-  return "hace un momento"
-}
+import { formatearFechaLocal, formatTimeAgo, limpiarTimestampsAntiguos } from "../../libs/utils"
 
 const initialMetrics = [
   {
@@ -80,33 +62,48 @@ export default function Dashboard() {
 
   const fetchAllData = useCallback(async () => {
     try {
+      // Limpiar timestamps antiguos para mantener localStorage limpio
+      limpiarTimestampsAntiguos()
+      
       // Cargar métricas y actividades en paralelo
       const [
-        metricsResponse,
+        farmacosCountResponse,
+        solicitudesPendientesCountResponse,
+        proximosAVencerCountResponse,
         ajustesResponse,
         solicitudesResponse,
         alertasResponse,
-        proximosAVencerCountResponse,
         stockBajoCountResponse,
-        lotesResponse,
       ] = await Promise.all([
+        supabase
+          .from("farmaco")
+          .select("id_farmaco", { count: "exact", head: true }),
+        supabase
+          .from("solicitud")
+          .select("id_sol", { count: "exact", head: true })
+          .eq("estado", "Pendiente"),
         (() => {
           const config = JSON.parse(
             localStorage.getItem("alertConfig") ||
               '{ "diasVencimiento": 30, "cantidadMinimaStock": 50 }',
           )
-          return supabase.rpc("get_dashboard_metrics", {
-            dias_vencimiento_param: config.diasVencimiento,
-            stock_bajo_param: config.cantidadMinimaStock,
-          })
+          // Calcular próximos a vencer desde lotes directamente
+          const fechaLimite = new Date()
+          fechaLimite.setDate(fechaLimite.getDate() + config.diasVencimiento)
+          return supabase
+            .from("lote")
+            .select("id_lote", { count: "exact", head: true })
+            .lte("fec_venci", formatearFechaLocal(fechaLimite))
+            .gte("fec_venci", formatearFechaLocal(new Date()))
+            .gt("cantidad", 0)
         })(),
         supabase
           .from("historial_ajuste")
           .select(
-            "id_ajuste, tipo_ajuste, cant_ajuste, fec_ajuste, lote:lote_id_lote(farmaco:farmaco_id_farmaco(nombre))",
+            "id_ajuste, tipo_ajuste, cant_ajuste, fec_ajuste, motivo, lote:lote_id_lote(farmaco:farmaco_id_farmaco(nombre_comercial))",
           )
           .order("fec_ajuste", { ascending: false })
-          .limit(10),
+          .limit(20),
         supabase
           .from("solicitud")
           .select(
@@ -122,90 +119,75 @@ export default function Dashboard() {
         supabase
           .from("alerta")
           .select("id_alerta", { count: "exact", head: true })
-          .eq("tipo_alerta", "Vencimiento"),
-        supabase
-          .from("alerta")
-          .select("id_alerta", { count: "exact", head: true })
           .eq("tipo_alerta", "Stock"),
-        supabase
-          .from("lote")
-          .select(
-            "id_lote, fec_ingreso, cant_inicial, farmaco:farmaco_id_farmaco(nombre)",
-          )
-          .order("fec_ingreso", { ascending: false })
-          .limit(10),
       ])
 
       // Procesar Métricas
-      const { data: metricsData, error: metricsError } = metricsResponse
-      if (metricsError)
-        throw new Error(`Error al cargar métricas: ${metricsError.message}`)
+      const { count: farmacosCount, error: farmacosError } = farmacosCountResponse
+      if (farmacosError)
+        throw new Error(`Error al contar fármacos: ${farmacosError.message}`)
+
+      const { count: solicitudesPendientesCount, error: solicitudesPendientesError } = solicitudesPendientesCountResponse
+      if (solicitudesPendientesError)
+        throw new Error(`Error al contar solicitudes pendientes: ${solicitudesPendientesError.message}`)
+
+      const { count: proximosAVencerCount, error: proximosAVencerError } = proximosAVencerCountResponse
+      if (proximosAVencerError)
+        throw new Error(`Error al contar próximos a vencer: ${proximosAVencerError.message}`)
 
       const {
-        count: proximosAVencerCount,
-        error: proximosAVencerError,
-      } = proximosAVencerCountResponse
-      if (proximosAVencerError)
-        throw new Error(
-          `Error al contar alertas de vencimiento: ${proximosAVencerError.message}`,
-        )
-
-      const { count: stockBajoCount, error: stockBajoError } =
-        stockBajoCountResponse
+        count: stockBajoCount,
+        error: stockBajoError,
+      } = stockBajoCountResponse
       if (stockBajoError)
         throw new Error(
           `Error al contar alertas de stock: ${stockBajoError.message}`,
         )
 
-      if (metricsData && metricsData.length > 0) {
-        const d = metricsData[0]
-        setMetrics([
-          { ...initialMetrics[0], value: String(d.farmacos_total || 0) },
-          {
-            ...initialMetrics[1],
-            value: String(d.solicitudes_pendientes || 0),
-          },
-          { ...initialMetrics[2], value: String(proximosAVencerCount || 0) },
-          { ...initialMetrics[3], value: String(stockBajoCount || 0) },
-        ])
-      }
+      setMetrics([
+        { ...initialMetrics[0], value: String(farmacosCount || 0) },
+        {
+          ...initialMetrics[1],
+          value: String(solicitudesPendientesCount || 0),
+        },
+        { ...initialMetrics[2], value: String(proximosAVencerCount || 0) },
+        { ...initialMetrics[3], value: String(stockBajoCount || 0) },
+      ])
 
       // Procesar Actividades
-      const { data: lotesData, error: lotesError } = lotesResponse
-      if (lotesError) {
-        console.error(
-          "Error al cargar ingresos de fármacos:",
-          lotesError.message,
-        )
-      }
-
-      const ingresoActivities: Activity[] = (lotesData || [])
-        .filter((l: any) => l.fec_ingreso)
-        .map((l: any) => ({
-          id: `ingreso-${l.id_lote}`,
-          type: "Ingreso",
-          message: `Ingreso de ${l.cant_inicial || 0} unidades de ${
-            l.farmaco?.nombre || "fármaco"
-          }`,
-          time: l.fec_ingreso,
-          icon: Package,
-        }))
-
       const { data: ajustesData, error: ajustesError } = ajustesResponse
       if (ajustesError)
         throw new Error(`Error al cargar ajustes: ${ajustesError.message}`)
 
-      const ajusteActivities: Activity[] = (ajustesData || []).map(
-        (a: any) => ({
-          id: `ajuste-${a.id_ajuste}`,
-          type: "Ajuste",
-          message: `${a.tipo_ajuste} de ${a.cant_ajuste} en ${
-            a.lote?.farmaco?.nombre || "fármaco"
-          }`,
-          time: a.fec_ajuste,
-          icon: Package,
-        }),
-      )
+      // Separar actividades por tipo según el motivo
+      const ingresoActivities: Activity[] = []
+      const ajusteActivities: Activity[] = []
+
+      ;(ajustesData || []).forEach((a: any) => {
+        if (a.motivo === "Registro") {
+          // Es un ingreso inicial al sistema
+          ingresoActivities.push({
+            id: `ingreso-${a.id_ajuste}`,
+            type: "Ingreso",
+            message: `Ingreso de ${a.cant_ajuste || 0} unidades de ${
+              a.lote?.farmaco?.nombre_comercial || "fármaco"
+            }`,
+            time: a.fec_ajuste,
+            icon: Package,
+          })
+        } else {
+          // Es un ajuste manual (Entrada/Salida manual, Despacho, etc.)
+          ajusteActivities.push({
+            id: `ajuste-${a.id_ajuste}`,
+            type: "Ajuste",
+            message: `${a.tipo_ajuste} de ${a.cant_ajuste} en ${
+              a.lote?.farmaco?.nombre_comercial || "fármaco"
+            }`,
+            time: a.fec_ajuste,
+            icon: Package,
+          })
+        }
+      })
 
       const { data: solicitudesData, error: solicitudesError } =
         solicitudesResponse
@@ -226,12 +208,14 @@ export default function Dashboard() {
         }),
       )
 
-      // Combinar, ordenar y guardar actividades
+      // Combinar, ordenar y guardar actividades (limitando el total final)
       const combinedActivities = [
         ...ingresoActivities,
         ...ajusteActivities,
         ...solicitudActivities,
-      ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      ]
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 10) // Tomar solo las 10 más recientes después de ordenar
 
       setActivities(combinedActivities)
 
@@ -440,7 +424,7 @@ export default function Dashboard() {
                             {activity.message}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {formatTimeAgo(activity.time)}
+                            {formatTimeAgo(activity.time, activity.id.split('-')[1], activity.type)}
                           </p>
                         </div>
                         <Badge variant="outline" className="text-xs">

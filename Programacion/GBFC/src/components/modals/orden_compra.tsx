@@ -3,6 +3,7 @@ import { BaseModal } from "./base"
 import { SelectorFarmacos } from "./selector_farmacos"
 import { useFarmacias } from "./useFarmacias"
 import { supabase } from "../../libs/supabase"
+import { getFechaLocal } from "../../libs/utils"
 
 const motivosOpciones = [
   "Stock bajo",
@@ -32,7 +33,7 @@ export function OrdenCompraModal({
     medicamentos: any[]
   }>({
     cod_sol: "",
-    fec_creacion: "",
+    fec_creacion: getFechaLocal(), // Fecha actual para mostrar
     farmacia_id_farmacia: "",
     motivo: "",
     prioridad: "Normal",
@@ -76,7 +77,6 @@ export function OrdenCompraModal({
       estado: "Pendiente",
       prioridad: form.prioridad,
       cant_sol,
-      fec_creacion: form.fec_creacion,
       fec_cierre: null,
       farmacia_id_farmacia: form.farmacia_id_farmacia,
       motivo: form.motivo,
@@ -106,8 +106,8 @@ export function OrdenCompraModal({
               name="fec_creacion"
               type="date"
               value={form.fec_creacion}
-              onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2"
+              readOnly
+              className="w-full border rounded-md px-3 py-2 bg-gray-100"
               required
             />
           </div>

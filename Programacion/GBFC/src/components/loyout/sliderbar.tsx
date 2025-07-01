@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X, LogOut } from "lucide-react"
+import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X, LogOut, Truck } from "lucide-react"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { useIsAdmin } from "../../hooks/useIsAdmin"
@@ -19,6 +19,7 @@ const menuItems = [
   { id: "solicitudes", label: "Solicitudes", icon: FileText, path: "/solicitudes" },
   { id: "alertas", label: "Alertas", icon: AlertTriangle, path: "/alertas" },
   { id: "reportes", label: "Reportes", icon: BarChart3, path: "/reportes" },
+  { id: "proveedores", label: "Proveedores", icon: Truck, path: "/proveedor" },
 ]
 
 export function Sidebar({ activeSection, children }: SidebarProps) {

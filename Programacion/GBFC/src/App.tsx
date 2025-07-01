@@ -8,7 +8,7 @@ import Alertas from './pages/alertas/alertas'
 import Reportes from './pages/reportes/reportes'
 import { Sidebar } from './components/loyout/sliderbar'
 import NuevoUsuario from './pages/logins/nuevo-usuario'
-
+import Proveedores from './pages/proveedores/proveedor'
 
 <Route path="/" element={<Login />} />
 
@@ -42,30 +42,6 @@ function App() {
           }
         />
         <Route
-          path="/solicitudes"
-          element={
-            <Sidebar activeSection="solicitudes">
-              <Solicitudes />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/solicitudes"
-          element={
-            <Sidebar activeSection="solicitudes">
-              <Solicitudes />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/solicitudes"
-          element={
-            <Sidebar activeSection="solicitudes">
-              <Solicitudes />
-            </Sidebar>
-          }
-        />
-        <Route
           path="/alertas"
           element={
             <Sidebar activeSection="alertas">
@@ -86,6 +62,14 @@ function App() {
           element={
             <Sidebar activeSection="usuarios">
               <NuevoUsuario />
+            </Sidebar>
+          }
+        />
+        <Route
+          path="/proveedor"
+          element={
+            <Sidebar activeSection="proveedores">
+              <Proveedores />
             </Sidebar>
           }
         />
