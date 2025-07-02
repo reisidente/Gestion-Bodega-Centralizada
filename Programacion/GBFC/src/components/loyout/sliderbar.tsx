@@ -2,9 +2,8 @@ import type { ReactNode } from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Home, Package, FileText, AlertTriangle, BarChart3, Search, Plus, Menu, X, LogOut, Truck } from "lucide-react"
+import { Home, Package, FileText, AlertTriangle, BarChart3, Plus, Menu, X, LogOut, Truck } from "lucide-react"
 import { Button } from "../ui/button"
-import { Input } from "../ui/input"
 import { useIsAdmin } from "../../hooks/useIsAdmin"
 import { supabase } from "../../libs/supabase"
 
@@ -24,9 +23,8 @@ const menuItems = [
 
 export function Sidebar({ activeSection, children }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
   const navigate = useNavigate()
-  const { isAdmin } = useIsAdmin()
+  const { isAdmin, user } = useIsAdmin()
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -44,7 +42,6 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
         transition={{ duration: 0.5 }}
       >
         <div>
-          {/* Header */}
           <div className="p-4 border-b border-gray-200/50">
             <div className="flex items-center justify-between">
               {!isCollapsed && (
@@ -61,27 +58,6 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
             </div>
           </div>
 
-          {/* Search */}
-          {!isCollapsed && (
-            <motion.div
-              className="p-4"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-9 bg-gray-50/50"
-                />
-              </div>
-            </motion.div>
-          )}
-
-          {/* Navigation */}
           <nav className="p-2">
             {menuItems.map((item, index) => (
               <motion.button
@@ -102,7 +78,6 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
                 {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
               </motion.button>
             ))}
-            {/* Enlace solo visible para administradores */}
             {isAdmin && (
               <motion.button
                 onClick={() => navigate("/nuevo-usuario")}
@@ -120,8 +95,45 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
           </nav>
         </div>
 
-        {/* Logout Button */}
         <div className="p-2 border-t border-gray-200/50">
+          {user && (
+            <>
+              {!isCollapsed ? (
+                <motion.div
+                  className="px-3 py-2 mb-2 bg-gray-50/50 rounded-lg"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                >
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {user.nom_usuario} {user.ape_usuario}
+                  </div>
+                  {isAdmin && (
+                    <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1 inline-block">
+                      Administrador
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  className="flex items-center justify-center mb-2"
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 }}
+                  title={`${user.nom_usuario} ${user.ape_usuario}`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    isAdmin ? 'bg-blue-600' : 'bg-gray-600'
+                  }`}>
+                    <span className="text-white text-xs font-medium">
+                      {user.nom_usuario?.[0]?.toUpperCase()}{user.ape_usuario?.[0]?.toUpperCase()}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </>
+          )}
+          
           <motion.button
             onClick={handleLogout}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 text-gray-600 hover:bg-red-100 hover:text-red-600`}

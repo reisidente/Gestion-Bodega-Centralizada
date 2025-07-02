@@ -11,19 +11,31 @@ interface OrdenDespachoModalProps {
   onCrear: (data: any) => void
 }
 
+const initialForm = {
+  cod_sol: "",
+  fec_creacion: getFechaLocal(), // Fecha actual para mostrar
+  farmacia_id_farmacia: "",
+  prioridad: "Normal",
+  medicamentos: [] as any[],
+}
+
 export function OrdenDespachoModal({
   open,
   onClose,
   onCrear,
 }: OrdenDespachoModalProps) {
   const farmacias = useFarmacias()
-  const [form, setForm] = useState({
-    cod_sol: "",
-    fec_creacion: getFechaLocal(), // Fecha actual para mostrar
-    farmacia_id_farmacia: "",
-    prioridad: "Normal",
-    medicamentos: [] as any[],
-  })
+  const [form, setForm] = useState(initialForm)
+
+  // Reiniciar el formulario cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      setForm({
+        ...initialForm,
+        fec_creacion: getFechaLocal(), // Fecha actual actualizada
+      })
+    }
+  }, [open])
 
   useEffect(() => {
     if (open) {

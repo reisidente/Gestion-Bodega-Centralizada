@@ -10,7 +10,6 @@ import { CrearReporteModal } from "../../components/modals/crear_reporte"
 import { supabase } from "../../libs/supabase"
 import type { FileObject } from "@supabase/storage-js"
 
-// Definimos un tipo para los datos del reporte que mostraremos en la tabla
 interface ReporteMostrado {
   nombre: string
   tipo: string
@@ -88,15 +87,12 @@ export default function Reportes() {
       "_"
     )}_${new Date().getTime()}.pdf`
 
-    // Configurar fuentes y colores
     const primaryColor = [41, 128, 185] // Azul
     const secondaryColor = [52, 73, 94] // Gris oscuro
 
-    // Encabezado principal con fondo
     doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
     doc.rect(10, 10, 190, 25, 'F')
     
-    // Título principal
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
@@ -106,7 +102,6 @@ export default function Reportes() {
     doc.setFont('helvetica', 'normal')
     doc.text(`Reporte de ${config.tipo}`, 105, 28, { align: 'center' })
 
-    // Información del reporte
     doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2])
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
@@ -119,7 +114,6 @@ export default function Reportes() {
     doc.setFont('helvetica', 'normal')
     doc.text(`${fecha} - ${hora}`, 35, 52)
 
-    // Agregar información específica según el tipo de reporte
     let startY = 62
     
     if (config.tipo === "Movimientos") {
@@ -181,7 +175,6 @@ export default function Reportes() {
       }
     }
 
-    // Línea separadora
     doc.setDrawColor(200, 200, 200)
     doc.line(14, startY + 3, 196, startY + 3)
     startY += 10
@@ -192,48 +185,39 @@ export default function Reportes() {
     try {
       switch (config.tipo) {
         case "Inventario": {
-          // Obtener fármacos
-          const { data: farmacosData, error: farmacosError } = await supabase
-            .from("farmaco")
-            .select("id_farmaco, nombre_comercial, codigo, categoria, uni_medida")
-          if (farmacosError) throw farmacosError
-
-          // Obtener lotes para calcular stock
           const { data: lotesData, error: lotesError } = await supabase
             .from("lote")
-            .select("farmaco_id_farmaco, cantidad")
+            .select(`
+              id_lote,
+              num_lote,
+              fec_venci,
+              cantidad,
+              farmaco!farmaco_id_farmaco(
+                nombre_comercial,
+                codigo,
+                categoria,
+                uni_medida
+              )
+            `)
           if (lotesError) throw lotesError
 
-          // Calcular stock por fármaco
-          const stockPorFarmaco = new Map<number, number>()
-          if (lotesData) {
-            lotesData.forEach((lote) => {
-              stockPorFarmaco.set(
-                lote.farmaco_id_farmaco,
-                (stockPorFarmaco.get(lote.farmaco_id_farmaco) || 0) + lote.cantidad
-              )
-            })
-          }
-
-          // Procesar datos y filtrar según incluirStockCero
-          let farmacosConStock = farmacosData?.map((f) => ({
-            ...f,
-            stock: stockPorFarmaco.get(f.id_farmaco) || 0
-          })) || []
-
-          // Filtrar fármacos con stock cero si no está marcada la opción
           const incluirStockCero = config.parametros?.incluirStockCero || false
-          if (!incluirStockCero) {
-            farmacosConStock = farmacosConStock.filter(f => f.stock > 0)
-          }
+          
+          let lotesConStock = lotesData?.filter(lote => 
+            incluirStockCero || lote.cantidad > 0
+          ) || []
 
-          head = [["Nombre Comercial", "Código", "Categoría", "Stock", "U. Medida"]]
-          tableData = farmacosConStock.map((f) => [
-            f.nombre_comercial,
-            f.codigo,
-            f.categoria,
-            f.stock.toString(),
-            f.uni_medida,
+          head = [["Nombre Comercial", "Código", "Categoría", "Nº Lote", "Stock", "U. Medida", "Vencimiento"]]
+          tableData = lotesConStock.map((lote: any) => [
+            lote.farmaco?.nombre_comercial || "N/A",
+            lote.farmaco?.codigo || "N/A",
+            lote.farmaco?.categoria || "N/A",
+            lote.num_lote,
+            lote.cantidad.toString(),
+            lote.farmaco?.uni_medida || "N/A",
+            lote.fec_venci === "9999-12-31" 
+              ? "N/A" 
+              : new Date(lote.fec_venci).toLocaleDateString(),
           ])
           break
         }
@@ -256,43 +240,35 @@ export default function Reportes() {
           break
         }
         case "Movimientos": {
-          // Consultar solicitudes completadas (despachadas) con sus detalles
           let solicitudesQuery = supabase
             .from("solicitud")
             .select("id_sol, cod_sol, fec_creacion, farmacia_id_farmacia")
             .eq("estado", "Completada")
 
-          // Aplicar filtros de fecha si se especifican
           if (config.parametros?.fechaInicio) {
             solicitudesQuery = solicitudesQuery.gte("fec_creacion", config.parametros.fechaInicio)
           }
           if (config.parametros?.fechaFin) {
             solicitudesQuery = solicitudesQuery.lte("fec_creacion", config.parametros.fechaFin)
           }
-
-          // Aplicar filtro de farmacia si se especifica
           if (config.parametros?.farmacia) {
             solicitudesQuery = solicitudesQuery.eq("farmacia_id_farmacia", config.parametros.farmacia)
           }
-
           const { data: solicitudesData, error: solicitudesError } = await solicitudesQuery.order("fec_creacion", { ascending: false })
           
           if (solicitudesError) throw solicitudesError
 
-          // Filtrar solicitudes para excluir las de compra (códigos C-XXXX)
           const solicitudesFiltradas = solicitudesData?.filter(solicitud => {
             const codigo = solicitud.cod_sol || ""
             return !codigo.startsWith("C-")
           }) || []
 
-          // Obtener farmacias
           const { data: farmaciasData, error: farmaciasError } = await supabase
             .from("farmacia")
             .select("id_farmacia, nom_farma")
           
           if (farmaciasError) throw farmaciasError
 
-          // Obtener detalles de solicitudes despachadas
           const { data: detallesData, error: detallesError } = await supabase
             .from("detalle_solicitud")
             .select("solicitud_id_sol, id_farmaco, cant_despacho, fec_despacho, estado_fmc")
@@ -301,14 +277,12 @@ export default function Reportes() {
 
           if (detallesError) throw detallesError
 
-          // Obtener fármacos
           const { data: farmacosData, error: farmacosError } = await supabase
             .from("farmaco")
             .select("id_farmaco, nombre_comercial")
           
           if (farmacosError) throw farmacosError
 
-          // Crear mapas para relaciones
           const farmaciasMap = new Map(farmaciasData?.map(f => [f.id_farmacia, f.nom_farma]) || [])
           const farmacosMap = new Map(farmacosData?.map(f => [f.id_farmaco, f.nombre_comercial]) || [])
 
@@ -319,13 +293,11 @@ export default function Reportes() {
             const detallesSolicitud = detallesData?.filter(d => d.solicitud_id_sol === solicitud.id_sol) || []
             
             detallesSolicitud.forEach((detalle) => {
-              // Calcular días transcurridos entre solicitud y despacho
               const fechaSolicitud = new Date(solicitud.fec_creacion)
               const fechaDespacho = detalle.fec_despacho ? new Date(detalle.fec_despacho) : null
               const diasTranscurridos = fechaDespacho 
                 ? Math.ceil((fechaDespacho.getTime() - fechaSolicitud.getTime()) / (1000 * 60 * 60 * 24))
                 : 0
-
               tableData.push([
                 solicitud.cod_sol || `SOL-${solicitud.id_sol}`,
                 farmaciasMap.get(solicitud.farmacia_id_farmacia) || "N/A",
@@ -340,7 +312,6 @@ export default function Reportes() {
             })
           })
 
-          // Ordenar por fecha de despacho más reciente
           tableData.sort((a, b) => {
             const fechaA = new Date(a[4] === "N/A" ? a[5] : a[4])
             const fechaB = new Date(b[4] === "N/A" ? b[5] : b[4])
@@ -349,25 +320,21 @@ export default function Reportes() {
           break
         }
         case "Stock Bajo": {
-          // Obtener configuración de alertas para el umbral de stock mínimo
           const alertConfig = JSON.parse(
             localStorage.getItem("alertConfig") ||
               '{ "diasVencimiento": 30, "cantidadMinimaStock": 50 }'
           )
 
-          // Obtener fármacos
           const { data: farmacosData, error: farmacosError } = await supabase
             .from("farmaco")
             .select("id_farmaco, nombre_comercial, categoria")
           if (farmacosError) throw farmacosError
 
-          // Obtener lotes para calcular stock
           const { data: lotesData, error: lotesError } = await supabase
             .from("lote")
             .select("farmaco_id_farmaco, cantidad")
           if (lotesError) throw lotesError
 
-          // Calcular stock por fármaco
           const stockPorFarmaco = new Map<number, number>()
           if (lotesData) {
             lotesData.forEach((lote) => {
@@ -378,7 +345,6 @@ export default function Reportes() {
             })
           }
 
-          // Filtrar fármacos con stock bajo (stock <= umbral configurado)
           const farmacosStockBajo = farmacosData?.filter((farmaco) => {
             const stockActual = stockPorFarmaco.get(farmaco.id_farmaco) || 0
             return stockActual <= alertConfig.cantidadMinimaStock
@@ -397,7 +363,6 @@ export default function Reportes() {
             }
           }) || []
 
-          // Aplicar ordenamiento según el parámetro seleccionado
           const ordenarPor = config.parametros?.ordenarPor || "Porcentaje de stock"
           farmacosStockBajo.sort((a, b) => {
             switch (ordenarPor) {
@@ -426,15 +391,12 @@ export default function Reportes() {
           break
         }
         case "Vencimientos": {
-          // Obtener el número de días del parámetro o usar 30 por defecto
           const diasVencimiento = parseInt(config.parametros?.dias) || 30
           
-          // Calcular fecha límite
           const today = new Date()
           const fechaLimite = new Date()
           fechaLimite.setDate(today.getDate() + diasVencimiento)
 
-          // Obtener lotes que vencen en el período especificado
           const { data: lotesData, error: lotesError } = await supabase
             .from("lote")
             .select("id_lote, num_lote, fec_venci, cantidad, farmaco_id_farmaco")
@@ -444,17 +406,14 @@ export default function Reportes() {
           
           if (lotesError) throw lotesError
 
-          // Obtener fármacos relacionados
           const { data: farmacosData, error: farmacosError } = await supabase
             .from("farmaco")
             .select("id_farmaco, nombre_comercial, categoria")
           
           if (farmacosError) throw farmacosError
 
-          // Crear mapa de fármacos
           const farmacosMap = new Map(farmacosData?.map(f => [f.id_farmaco, f]) || [])
 
-          // Procesar datos de vencimientos
           const lotesConVencimiento = lotesData?.map((lote) => {
             const farmaco = farmacosMap.get(lote.farmaco_id_farmaco)
             const fechaVencimiento = new Date(lote.fec_venci)
@@ -468,7 +427,6 @@ export default function Reportes() {
             }
           }) || []
 
-          // Aplicar ordenamiento según el parámetro seleccionado
           const ordenarPor = config.parametros?.ordenarPor || "Días restantes"
           lotesConVencimiento.sort((a, b) => {
             switch (ordenarPor) {
@@ -490,7 +448,6 @@ export default function Reportes() {
           ])
           break
         }
-        // Agrega más casos para otros tipos de reportes
       }
 
       autoTable(doc, {
@@ -523,26 +480,42 @@ export default function Reportes() {
         showHead: 'everyPage',
       })
 
-      // Agregar estadísticas para reporte de movimientos
-      if (config.tipo === "Movimientos" && tableData.length > 0) {
+      if (config.tipo === "Inventario" && tableData.length > 0) {
         const finalY = (doc as any).lastAutoTable.finalY || startY + 20
+        const totalLotes = tableData.length
+        const cantidadTotal = tableData.reduce((sum, row) => sum + parseInt(row[4]), 0)
+        const farmacosUnicos = new Set(tableData.map(row => row[0])).size
+        const categoriasUnicas = new Set(tableData.map(row => row[2])).size
+        const lotesConStock = tableData.filter(row => parseInt(row[4]) > 0).length
         
-        // Calcular estadísticas
-        const totalDespachos = tableData.length
-        const cantidadTotal = tableData.reduce((sum, row) => sum + parseInt(row[3]), 0)
-        const farmaciasUnicas = new Set(tableData.map(row => row[1])).size
-        
-        // Sección de estadísticas con fondo
         doc.setFillColor(248, 249, 250)
-        doc.rect(14, finalY + 10, 182, 35, 'F')
-        
-        // Título de estadísticas
+        doc.rect(14, finalY + 10, 182, 42, 'F')
         doc.setTextColor(52, 73, 94)
         doc.setFontSize(11)
         doc.setFont('helvetica', 'bold')
         doc.text('RESUMEN ESTADÍSTICO', 20, finalY + 22)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`• Total de lotes: ${totalLotes}`, 20, finalY + 30)
+        doc.text(`• Lotes con stock: ${lotesConStock}`, 20, finalY + 36)
+        doc.text(`• Cantidad total: ${cantidadTotal.toLocaleString()} unidades`, 20, finalY + 42)
+        doc.text(`• Fármacos únicos: ${farmacosUnicos}`, 110, finalY + 30)
+        doc.text(`• Categorías: ${categoriasUnicas}`, 110, finalY + 36)
+        doc.text(`• Stock promedio/lote: ${Math.round(cantidadTotal / totalLotes)} unidades`, 110, finalY + 42)
+      }
+
+      if (config.tipo === "Movimientos" && tableData.length > 0) {
+        const finalY = (doc as any).lastAutoTable.finalY || startY + 20
+        const totalDespachos = tableData.length
+        const cantidadTotal = tableData.reduce((sum, row) => sum + parseInt(row[3]), 0)
+        const farmaciasUnicas = new Set(tableData.map(row => row[1])).size
         
-        // Estadísticas en columnas
+        doc.setFillColor(248, 249, 250)
+        doc.rect(14, finalY + 10, 182, 35, 'F')
+        doc.setTextColor(52, 73, 94)
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.text('RESUMEN ESTADÍSTICO', 20, finalY + 22)
         doc.setFontSize(9)
         doc.setFont('helvetica', 'normal')
         doc.text(`• Total de despachos: ${totalDespachos}`, 20, finalY + 30)
@@ -550,33 +523,23 @@ export default function Reportes() {
         doc.text(`• Farmacias atendidas: ${farmaciasUnicas}`, 20, finalY + 42)
       }
 
-      // Agregar estadísticas para reporte de stock bajo
       if (config.tipo === "Stock Bajo" && tableData.length > 0) {
         const finalY = (doc as any).lastAutoTable.finalY || startY + 20
-        
-        // Calcular estadísticas
         const totalFarmacosStockBajo = tableData.length
         const promedioStockActual = tableData.reduce((sum, row) => sum + parseInt(row[2]), 0) / tableData.length
         const deficitTotal = tableData.reduce((sum, row) => sum + parseInt(row[5]), 0)
         const categoriasAfectadas = new Set(tableData.map(row => row[1])).size
-        
-        // Obtener el umbral de la configuración
         const alertConfigLocal = JSON.parse(
           localStorage.getItem("alertConfig") ||
             '{ "diasVencimiento": 30, "cantidadMinimaStock": 50 }'
         )
         
-        // Sección de estadísticas con fondo
         doc.setFillColor(248, 249, 250)
         doc.rect(14, finalY + 10, 182, 42, 'F')
-        
-        // Título de estadísticas
         doc.setTextColor(52, 73, 94)
         doc.setFontSize(11)
         doc.setFont('helvetica', 'bold')
-        doc.text('📊 RESUMEN ESTADÍSTICO', 20, finalY + 22)
-        
-        // Estadísticas en dos columnas
+        doc.text('RESUMEN ESTADÍSTICO', 20, finalY + 22)
         doc.setFontSize(9)
         doc.setFont('helvetica', 'normal')
         doc.text(`• Fármacos con stock bajo: ${totalFarmacosStockBajo}`, 20, finalY + 30)
@@ -586,17 +549,12 @@ export default function Reportes() {
         doc.text(`• Categorías afectadas: ${categoriasAfectadas}`, 110, finalY + 36)
       }
 
-      // Agregar estadísticas para reporte de vencimientos
       if (config.tipo === "Vencimientos" && tableData.length > 0) {
         const finalY = (doc as any).lastAutoTable.finalY || startY + 20
-        
-        // Calcular estadísticas
         const totalLotesVenciendo = tableData.length
         const cantidadTotalVenciendo = tableData.reduce((sum, row) => sum + parseInt(row[3]), 0)
         const categoriasAfectadas = new Set(tableData.map(row => row[1])).size
         const farmacosAfectados = new Set(tableData.map(row => row[0])).size
-        
-        // Calcular promedio de días restantes (excluyendo vencidos)
         const diasRestantesArray = tableData
           .map(row => row[5])
           .filter(dias => dias !== "Vencido")
@@ -607,19 +565,13 @@ export default function Reportes() {
           : 0
 
         const diasVencimiento = parseInt(config.parametros?.dias) || 30
-        
-        // Sección de estadísticas con fondo
         const alturaSeccion = promedioDiasRestantes > 0 ? 48 : 42
         doc.setFillColor(248, 249, 250)
         doc.rect(14, finalY + 10, 182, alturaSeccion, 'F')
-        
-        // Título de estadísticas
         doc.setTextColor(52, 73, 94)
         doc.setFontSize(11)
         doc.setFont('helvetica', 'bold')
-        doc.text('📊 RESUMEN ESTADÍSTICO', 20, finalY + 22)
-        
-        // Estadísticas en dos columnas
+        doc.text('RESUMEN ESTADÍSTICO', 20, finalY + 22)
         doc.setFontSize(9)
         doc.setFont('helvetica', 'normal')
         doc.text(`• Lotes próximos a vencer: ${totalLotesVenciendo}`, 20, finalY + 30)
@@ -632,30 +584,23 @@ export default function Reportes() {
         }
       }
 
-      // Agregar pie de página
       const pageHeight = doc.internal.pageSize.height
       doc.setFillColor(240, 240, 240)
       doc.rect(0, pageHeight - 20, 210, 20, 'F')
-      
       doc.setTextColor(100, 100, 100)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.text('Sistema de Gestión de Bodega Farmacéutica Centralizada', 14, pageHeight - 12)
       doc.text(`Generado el ${fecha} a las ${hora}`, 14, pageHeight - 6)
-      
-      // Número de página
       doc.text(`Página 1`, 196, pageHeight - 9, { align: 'right' })
 
       const pdfBlob = doc.output("blob")
-
       const { error: uploadError } = await supabase.storage
         .from("reportes")
         .upload(fileName, pdfBlob)
-
       if (uploadError) {
         throw uploadError
       }
-
       await fetchReportes() // Refrescar la lista
     } catch (error) {
       console.error("Error al generar o subir el reporte:", error)
@@ -677,7 +622,7 @@ export default function Reportes() {
       console.error("Error al eliminar el reporte:", error)
       alert("No se pudo eliminar el reporte.")
     } else {
-      await fetchReportes() // Refrescar
+      await fetchReportes()
     }
     setLoading(false)
     setOpenMenu(null)
@@ -688,7 +633,6 @@ export default function Reportes() {
     return data.publicUrl
   }
 
-  // Transforma los datos de los archivos para la tabla
   const dataMostrada: ReporteMostrado[] = reportes.map((file) => {
     const parts = file.name.split("_")
     return {
@@ -710,7 +654,6 @@ export default function Reportes() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-2 py-6">
-      {/* Título y acciones */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Reportes</h1>
@@ -736,7 +679,6 @@ export default function Reportes() {
         </div>
       </div>
 
-      {/* Filtros y búsqueda */}
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
         <div className="flex flex-1 gap-1 flex-wrap">
           {filtros.map((filtro) => (
@@ -770,7 +712,6 @@ export default function Reportes() {
         </div>
       </div>
 
-      {/* Tabla de reportes */}
       {loading && <p>Cargando...</p>}
       <TableContainer
         columns={[
@@ -869,7 +810,6 @@ export default function Reportes() {
         data={filteredData}
       />
 
-      {/* Modals */}
       <CrearReporteModal
         open={modalCrear}
         onClose={() => setModalCrear(false)}

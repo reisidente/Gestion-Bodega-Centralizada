@@ -114,15 +114,10 @@ export default function NuevoUsuario() {
         return
       }
 
-      // 1. Crear usuario en Supabase Auth con confirmación automática
+      // 1. Crear usuario en Supabase Auth
       const { data: authUser, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            email_confirm: true // Intenta confirmar automáticamente
-          }
-        }
       })
 
       if (authError || !authUser.user) {

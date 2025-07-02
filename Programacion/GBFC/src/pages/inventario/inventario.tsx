@@ -9,59 +9,9 @@ import { AjustarStockModal } from "../../components/modals/ajuste_farmaco"
 import { HistorialFarmacoModal } from "../../components/modals/historial_farmaco"
 import { RegistrarFarmacoModal } from "../../components/modals/registro_farmaco"
 import { AgregarLoteModal } from "../../components/modals/agregar_lote"
+import { SeleccionarFarmacoParaLoteModal } from "../../components/modals/selecionar_farmaco"
 import { supabase } from "../../libs/supabase"
-import { BaseModal } from "../../components/modals/base"
 import { getFechaLocal, guardarTimestampActividad } from "../../libs/utils"
-
-interface SeleccionarFarmacoParaLoteModalProps {
-  open: boolean
-  onClose: () => void
-  farmacos: any[]
-  onSelect: (farmaco: any) => void
-}
-
-function SeleccionarFarmacoParaLoteModal({ open, onClose, farmacos, onSelect }: SeleccionarFarmacoParaLoteModalProps) {
-  const [search, setSearch] = useState("")
-
-  const filteredFarmacos = farmacos.filter(f =>
-    f.nombre_comercial.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <BaseModal open={open} onClose={onClose} widthClass="max-w-2xl">
-      <div className="p-2">
-        <h2 className="font-semibold text-2xl mb-2">Seleccionar Fármaco</h2>
-        <p className="text-gray-500 mb-4">Elige un fármaco para agregarle un nuevo lote.</p>
-        <input
-          type="text"
-          placeholder="Buscar por nombre..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full border rounded-md px-4 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-200 transition"
-        />
-        <div className="max-h-96 overflow-y-auto pr-2">
-          {filteredFarmacos.length > 0 ? (
-            <ul className="divide-y divide-gray-200">
-              {filteredFarmacos.map(farmaco => (
-                <li key={farmaco.id_farmaco}>
-                  <button
-                    className="w-full text-left py-3 px-2 hover:bg-gray-100 rounded-md transition-colors"
-                    onClick={() => onSelect(farmaco)}
-                  >
-                    <p className="font-semibold text-gray-800">{farmaco.nombre_comercial}</p>
-                    <p className="text-sm text-gray-500">Código: {farmaco.codigo}</p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-center text-gray-500 py-8">No se encontraron fármacos.</p>
-          )}
-        </div>
-      </div>
-    </BaseModal>
-  )
-}
 
 export default function Inventario() {
   const [selectedCategory, setSelectedCategory] = useState("Todos")
@@ -99,23 +49,10 @@ export default function Inventario() {
 
     const fetchData = async () => {
       try {
-        console.log("🔍 Iniciando carga de datos de inventario...")
-        
-        // Verificar usuario autenticado
-        const { data: { user } } = await supabase.auth.getUser()
-        console.log("👤 Usuario autenticado:", user?.email || "No hay usuario en Supabase Auth")
-        
-        // Verificar sesión local
-        const localSession = localStorage.getItem('userSession')
-        if (localSession) {
-          const session = JSON.parse(localSession)
-          console.log("📱 Sesión local:", session.email)
-        }
-        
         const [
-          { data: farmacosData, error: farmacosError },
-          { data: lotesData, error: lotesError },
-          { data: proveedoresData, error: proveedoresError },
+          { data: farmacosData },
+          { data: lotesData },
+          { data: proveedoresData },
         ] = await Promise.all([
           supabase
             .from("farmaco")
@@ -130,23 +67,13 @@ export default function Inventario() {
           supabase.from("proveedor").select("*"),
         ])
 
-        console.log("📊 Resultados de consultas:")
-        console.log("- Fármacos:", farmacosData?.length || 0, farmacosError ? `Error: ${farmacosError.message}` : "")
-        console.log("- Lotes:", lotesData?.length || 0, lotesError ? `Error: ${lotesError.message}` : "")
-        console.log("- Proveedores:", proveedoresData?.length || 0, proveedoresError ? `Error: ${proveedoresError.message}` : "")
-
         if (farmacosData && lotesData && proveedoresData) {
           setFarmacos(farmacosData)
           setLotes(lotesData)
           setProveedores(proveedoresData)
-        } else {
-          console.error("❌ Algunas consultas fallaron:")
-          if (farmacosError) console.error("- Error fármacos:", farmacosError)
-          if (lotesError) console.error("- Error lotes:", lotesError)
-          if (proveedoresError) console.error("- Error proveedores:", proveedoresError)
         }
       } catch (error) {
-        console.error("💥 Error general al cargar datos:", error)
+        console.error("Error al cargar datos:", error)
       }
     }
     fetchData()
@@ -216,7 +143,7 @@ export default function Inventario() {
 
   const categories = [
     "Todos",
-    ...Array.from(new Set(farmacos.map(f => f.categoria)))
+    ...Array.from(new Set(farmacos.map(f => f.categoria))).sort()
   ]
 
   const getStatusColor = (estado: string) => {
@@ -309,20 +236,21 @@ export default function Inventario() {
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-        <div className="flex flex-1 gap-1 flex-wrap">
-          {categories.map((cat) => (
-            <Button
-              key={cat}
-              variant={selectedCategory === cat ? "default" : "ghost"}
-              className={`rounded-md px-4 py-2 text-base font-medium ${
-                selectedCategory === cat ? "" : "text-gray-700"
-              }`}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </Button>
-          ))}
-
+        <div className="flex flex-1 gap-1 overflow-x-auto pb-2">
+          <div className="flex gap-1 min-w-max">
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                variant={selectedCategory === cat ? "default" : "ghost"}
+                className={`rounded-md px-4 py-2 text-base font-medium whitespace-nowrap ${
+                  selectedCategory === cat ? "" : "text-gray-700"
+                }`}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
         </div>
         <div className="flex-1 flex justify-end">
           <input

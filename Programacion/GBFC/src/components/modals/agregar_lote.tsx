@@ -18,6 +18,17 @@ interface AgregarLoteModalProps {
   }) => Promise<void>
 }
 
+const initialState = {
+  lote: "",
+  fechaFabricacion: "",
+  fechaVencimiento: "",
+  cantidad: "",
+  precio: "",
+  idProveedor: "",
+  isLoading: false,
+  error: "",
+}
+
 export function AgregarLoteModal({
   open,
   onClose,
@@ -34,17 +45,17 @@ export function AgregarLoteModal({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
-  // Limpiar el estado cuando el modal se cierra o el fármaco cambia
+  // Reiniciar el estado cuando el modal se abre
   useEffect(() => {
     if (open) {
-      setLote("")
-      setFechaFabricacion("")
-      setFechaVencimiento("")
-      setCantidad("")
-      setPrecio("")
-      setIdProveedor("")
-      setError("")
-      setIsLoading(false)
+      setLote(initialState.lote)
+      setFechaFabricacion(initialState.fechaFabricacion)
+      setFechaVencimiento(initialState.fechaVencimiento)
+      setCantidad(initialState.cantidad)
+      setPrecio(initialState.precio)
+      setIdProveedor(initialState.idProveedor)
+      setError(initialState.error)
+      setIsLoading(initialState.isLoading)
     }
   }, [open])
 

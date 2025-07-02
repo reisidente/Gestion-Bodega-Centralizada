@@ -8,31 +8,17 @@ export function useAdminGuard() {
   useEffect(() => {
     const checkAdmin = async () => {
       setLoading(true)
-      
-      // Primero intentar con Supabase Auth
       const { data: { user } } = await supabase.auth.getUser()
-      let uid = user?.id
-      
-      // Si no hay usuario en Supabase Auth, usar sesión local
-      if (!uid) {
-        const localSession = localStorage.getItem('userSession')
-        if (localSession) {
-          const session = JSON.parse(localSession)
-          uid = session.uid
-        }
-      }
-      
-      if (!uid) {
+      if (!user) {
         setIsAdmin(false)
         setLoading(false)
         return
       }
-      
       // Buscar el usuario en la tabla usuario y verificar el rol
       const { data, error } = await supabase
         .from('usuario')
         .select('rol_id_rol')
-        .eq('uid', uid)
+        .eq('uid', user.id)
         .single()
       if (error || !data) {
         setIsAdmin(false)

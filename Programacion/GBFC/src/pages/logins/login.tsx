@@ -66,50 +66,49 @@ export default function Component() {
       console.log("Login params:", parsed.rut, parsed.dv, password);
       const { data: usuario, error } = await supabase
         .from('usuario')
-        .select('uid, email, activo')
+        .select('uid, email, activo, nom_usuario, ape_usuario')
         .eq('rut', parsed.rut)
         .eq('d_verificador', parsed.dv)
         .eq('contraseña', password) // ¡En producción usa hash!
         .eq('activo', true) // Solo usuarios activos
-        .single()
+        .maybeSingle()
       
-      console.log("Login result:", usuario, error);
-      if (error || !usuario) {
-        setErrors({ rut: "RUT o contraseña incorrectos. Si el problema persiste, contacte al administrador." })
+      console.log("Usuario encontrado:", usuario);
+      
+      if (error) {
+        console.error("Error en consulta:", error);
+        setErrors({ rut: "Error al validar usuario. Contacte al administrador." })
         setIsLoading(false)
         return
       }
+      
+      if (!usuario) {
+        setErrors({ rut: "RUT o contraseña incorrectos, o usuario inactivo." })
+        setIsLoading(false)
+        return
+      }
+      
+      // Si no tiene UID, permitir login directo (usuarios legacy)
       if (!usuario.uid) {
-        setErrors({ rut: "El usuario no está asociado a un UID válido. Contacte al administrador." })
+        console.log("Usuario legacy sin UID, permitiendo acceso directo");
+        setIsLoading(false)
+        navigate("/dashboard")
+        return
+      }
+      // Autenticar con Supabase Auth usando email y contraseña
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: usuario.email,
+        password,
+      })
+      
+      if (authError) {
+        console.error("Error de autenticación:", authError);
+        setErrors({ rut: "Error de autenticación. Verifique su contraseña." })
         setIsLoading(false)
         return
       }
       
-      // Autenticación exitosa - establecer sesión local y en Supabase
-      console.log("Login exitoso para usuario:", usuario.email)
-      
-      // Intentar establecer sesión en Supabase Auth también
-      try {
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: usuario.email,
-          password,
-        })
-        if (authError) {
-          console.warn("No se pudo establecer sesión en Supabase Auth:", authError.message)
-          // Continuar con sesión local si falla Supabase Auth
-        }
-      } catch (authError) {
-        console.warn("Error al intentar sesión en Supabase Auth:", authError)
-      }
-      
-      // Guardar información del usuario en localStorage como respaldo
-      localStorage.setItem('userSession', JSON.stringify({
-        uid: usuario.uid,
-        email: usuario.email,
-        authenticated: true,
-        loginTime: new Date().toISOString()
-      }))
-      
+      console.log("Login exitoso para:", usuario.nom_usuario, usuario.ape_usuario);
       setIsLoading(false)
       navigate("/dashboard")
       // --- FIN FLUJO VALIDACIÓN EN SUPABASE ---

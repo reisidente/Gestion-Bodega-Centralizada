@@ -18,6 +18,15 @@ interface OrdenCompraModalProps {
   onEnviar: (data: any) => void
 }
 
+const initialForm = {
+  cod_sol: "",
+  fec_creacion: getFechaLocal(), // Fecha actual para mostrar
+  farmacia_id_farmacia: "",
+  motivo: "",
+  prioridad: "Normal",
+  medicamentos: [] as any[],
+}
+
 export function OrdenCompraModal({
   open,
   onClose,
@@ -31,14 +40,17 @@ export function OrdenCompraModal({
     motivo: string
     prioridad: string
     medicamentos: any[]
-  }>({
-    cod_sol: "",
-    fec_creacion: getFechaLocal(), // Fecha actual para mostrar
-    farmacia_id_farmacia: "",
-    motivo: "",
-    prioridad: "Normal",
-    medicamentos: [],
-  })
+  }>(initialForm)
+
+  // Reiniciar el formulario cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      setForm({
+        ...initialForm,
+        fec_creacion: getFechaLocal(), // Fecha actual actualizada
+      })
+    }
+  }, [open])
 
   useEffect(() => {
     if (open) {

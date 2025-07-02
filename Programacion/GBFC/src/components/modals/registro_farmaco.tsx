@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BaseModal } from "./base"
 import { supabase } from "../../libs/supabase"
 
@@ -8,25 +8,36 @@ interface RegistrarFarmacoModalProps {
   onRegistrar: (data: any) => void
 }
 
+const initialForm = {
+  nombre_comercial: "",
+  nombre_generico: "",
+  codigo: "",
+  uni_medida: "",
+  categoria: "",
+  principio_activo: "",
+  presentacion: "",
+  concentracion: "",
+  via_administracion: "",
+  observacion: "",
+}
+
 export function RegistrarFarmacoModal({
   open,
   onClose,
   onRegistrar,
 }: RegistrarFarmacoModalProps) {
-  const [form, setForm] = useState({
-    nombre_comercial: "",
-    nombre_generico: "",
-    codigo: "",
-    uni_medida: "",
-    categoria: "",
-    principio_activo: "",
-    presentacion: "",
-    concentracion: "",
-    via_administracion: "",
-    observacion: "",
-  })
+  const [form, setForm] = useState(initialForm)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Reiniciar el formulario cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      setForm(initialForm)
+      setError("")
+      setIsLoading(false)
+    }
+  }, [open])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -59,19 +70,6 @@ export function RegistrarFarmacoModal({
 
       // Si llegamos aquí, el código es único
       onRegistrar(form)
-      setForm({
-        nombre_comercial: "",
-        nombre_generico: "",
-        codigo: "",
-        uni_medida: "",
-        categoria: "",
-        principio_activo: "",
-        presentacion: "",
-        concentracion: "",
-        via_administracion: "",
-        observacion: "",
-      })
-      setError("")
       onClose()
     } catch (err) {
       setError("Error inesperado al validar el código")

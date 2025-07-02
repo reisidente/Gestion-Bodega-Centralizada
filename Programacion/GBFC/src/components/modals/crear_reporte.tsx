@@ -58,6 +58,13 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
   const [data, setData] = useState(initialState)
   const [farmacias, setFarmacias] = useState<any[]>([])
 
+  // Reiniciar datos cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      setData(initialState)
+    }
+  }, [open])
+
   // Cargar farmacias cuando se abre el modal
   useEffect(() => {
     if (open) {
