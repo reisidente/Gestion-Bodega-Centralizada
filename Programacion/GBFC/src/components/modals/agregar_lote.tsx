@@ -70,22 +70,24 @@ export function AgregarLoteModal({
       return
     }
 
-    // Validar que la fecha de vencimiento no sea anterior a la fecha actual
-    const today = new Date()
-    today.setHours(0, 0, 0, 0) // Establecer hora a medianoche para comparar solo fechas
-    const vencimientoDate = new Date(fechaVencimiento)
-    vencimientoDate.setHours(0, 0, 0, 0)
+    // Validar fechas
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0]
 
-    if (vencimientoDate < today) {
-      setError("La fecha de vencimiento no puede ser anterior a la fecha actual.")
+    // Validar que la fecha de fabricación no sea mayor a la fecha actual (debe ser <= hoy)
+    if (fechaFabricacion > today) {
+      setError("La fecha de fabricación debe ser igual o anterior a la fecha actual.")
+      return
+    }
+
+    // Validar que la fecha de vencimiento no sea anterior a la fecha actual
+    if (fechaVencimiento < today) {
+      setError("La fecha de vencimiento debe ser igual o posterior a la fecha actual.")
       return
     }
 
     // Validar que la fecha de vencimiento sea posterior a la fecha de fabricación
-    const fabricacionDate = new Date(fechaFabricacion)
-    fabricacionDate.setHours(0, 0, 0, 0)
-
-    if (vencimientoDate <= fabricacionDate) {
+    if (fechaVencimiento <= fechaFabricacion) {
       setError("La fecha de vencimiento debe ser posterior a la fecha de fabricación.")
       return
     }

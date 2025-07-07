@@ -8,10 +8,27 @@ import { OrdenDespachoModal } from "../../components/modals/orden_despacho"
 import { OrdenCompraModal } from "../../components/modals/orden_compra"
 import { supabase } from "../../libs/supabase"
 import { getFechaLocal } from "../../libs/utils"
+import { useIsAdmin } from "../../hooks/useIsAdmin"
+
+// Función para formatear fecha YYYY-MM-DD a DD-MM-YYYY
+const formatearFecha = (fecha: string) => {
+  if (!fecha) return "-"
+  const partes = fecha.split('-')
+  if (partes.length === 3) {
+    const [año, mes, dia] = partes
+    return `${dia}-${mes}-${año}`
+  }
+  return fecha
+}
 
 export default function Solicitudes() {
+  const { user } = useIsAdmin()
   const [selectedCategory, setSelectedCategory] = useState("Todas")
   const [search, setSearch] = useState("")
+  
+  // Verificar si el usuario es bodeguero (rol_id_rol === 3)
+  // Los bodegueros no pueden crear nuevas solicitudes ni órdenes de compra
+  const isBodeguero = user?.rol_id_rol === 3
   const [modalDetalle, setModalDetalle] = useState<{ open: boolean; data?: any }>({ open: false })
   const [modalOrdenDespacho, setModalOrdenDespacho] = useState(false)
   const [modalOrdenCompra, setModalOrdenCompra] = useState(false)
@@ -105,7 +122,22 @@ export default function Solicitudes() {
       (selectedCategory === "Todas" || item.estado === selectedCategory) &&
       (item.id.toLowerCase().includes(search.toLowerCase()) ||
         item.farmacia.toLowerCase().includes(search.toLowerCase()))
-  )
+  ).sort((a, b) => {
+    // Primero ordenar por estado (Pendientes primero)
+    if (a.estado === "Pendiente" && b.estado !== "Pendiente") return -1
+    if (b.estado === "Pendiente" && a.estado !== "Pendiente") return 1
+    
+    // Dentro de las pendientes, ordenar por prioridad (Urgente primero)
+    if (a.estado === "Pendiente" && b.estado === "Pendiente") {
+      if (a.prioridad === "Urgente" && b.prioridad !== "Urgente") return -1
+      if (b.prioridad === "Urgente" && a.prioridad !== "Urgente") return 1
+    }
+    
+    // Luego ordenar por fecha de creación (más nueva primero)
+    const fechaA = new Date(a.fechaCreacion).getTime()
+    const fechaB = new Date(b.fechaCreacion).getTime()
+    return fechaB - fechaA
+  })
 
   const getPriorityColor = (prioridad: string) => {
     switch (prioridad) {
@@ -134,22 +166,25 @@ export default function Solicitudes() {
           <h1 className="text-4xl font-bold text-gray-900">Solicitudes</h1>
           <p className="text-gray-500 text-lg mt-1">Gestión de solicitudes de farmacia</p>
         </div>
-        <div className="flex gap-2 mt-2 md:mt-0">
-          <Button
-            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-            onClick={() => setModalOrdenDespacho(true)}
-          >
-            <Plus className="h-5 w-5" />
-            Nueva Solicitud
-          </Button>
-          <Button
-            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-            onClick={() => setModalOrdenCompra(true)}
-          >
-            <Plus className="h-5 w-5" />
-            Nueva Orden
-          </Button>
-        </div>
+        {/* Solo mostrar botones de Nueva Solicitud y Nueva Orden si el usuario no es bodeguero */}
+        {!isBodeguero && (
+          <div className="flex gap-2 mt-2 md:mt-0">
+            <Button
+              className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+              onClick={() => setModalOrdenDespacho(true)}
+            >
+              <Plus className="h-5 w-5" />
+              Nueva Solicitud
+            </Button>
+            <Button
+              className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+              onClick={() => setModalOrdenCompra(true)}
+            >
+              <Plus className="h-5 w-5" />
+              Nueva Orden
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
@@ -182,8 +217,8 @@ export default function Solicitudes() {
         columns={[
           { header: "ID", render: item => <span className="font-medium text-gray-900">{item.id}</span>, sortKey: "id" },
           { header: "Farmacia", render: item => item.farmacia, sortKey: "farmacia" },
-          { header: "Fecha Creación", render: item => item.fechaCreacion, sortKey: "fechaCreacion" },
-          { header: "Fecha Despacho", render: item => item.fechaDespacho || '-', sortKey: "fechaDespacho" },
+          { header: "Fecha Creación", render: item => formatearFecha(item.fechaCreacion), sortKey: "fechaCreacion" },
+          { header: "Fecha Despacho", render: item => item.fechaDespacho ? formatearFecha(item.fechaDespacho) : '-', sortKey: "fechaDespacho" },
           {
             header: "Prioridad",
             render: item => (

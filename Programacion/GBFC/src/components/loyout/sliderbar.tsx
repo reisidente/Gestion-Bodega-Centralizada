@@ -24,7 +24,21 @@ const menuItems = [
 export function Sidebar({ activeSection, children }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
-  const { isAdmin, user } = useIsAdmin()
+  const { isAdmin, user, rol } = useIsAdmin()
+
+  // Función para obtener el color del rol
+  const getRoleColor = (rolId: number) => {
+    switch (rolId) {
+      case 1:
+        return "bg-blue-100 text-blue-800" // Administrador - Azul
+      case 2:
+        return "bg-green-100 text-green-800" // Farmacéutico - Verde
+      case 3:
+        return "bg-orange-100 text-orange-800" // Operador - Naranja
+      default:
+        return "bg-gray-100 text-gray-800" // Usuario genérico - Gris
+    }
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -108,11 +122,9 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
                   <div className="text-sm font-medium text-gray-900 truncate">
                     {user.nom_usuario} {user.ape_usuario}
                   </div>
-                  {isAdmin && (
-                    <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full mt-1 inline-block">
-                      Administrador
-                    </div>
-                  )}
+                  <div className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${getRoleColor(user.rol_id_rol)}`}>
+                    {rol?.rol || 'Usuario'}
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div
@@ -120,10 +132,12 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.7 }}
-                  title={`${user.nom_usuario} ${user.ape_usuario}`}
+                  title={`${user.nom_usuario} ${user.ape_usuario} - ${rol?.rol || 'Usuario'}`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    isAdmin ? 'bg-blue-600' : 'bg-gray-600'
+                    user.rol_id_rol === 1 ? 'bg-blue-600' : 
+                    user.rol_id_rol === 2 ? 'bg-green-600' : 
+                    user.rol_id_rol === 3 ? 'bg-orange-600' : 'bg-gray-600'
                   }`}>
                     <span className="text-white text-xs font-medium">
                       {user.nom_usuario?.[0]?.toUpperCase()}{user.ape_usuario?.[0]?.toUpperCase()}

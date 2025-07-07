@@ -6,11 +6,17 @@ import { TableContainer } from "../../components/ui/table"
 import { ConfigAlertasModal } from "../../components/modals/configurar_alertas"
 import { supabase } from "../../libs/supabase"
 import { getFechaLocal } from "../../libs/utils"
+import { useIsAdmin } from "../../hooks/useIsAdmin"
 
 export default function Alertas() {
+  const { user } = useIsAdmin()
   const [SelectedCategory, setSelectedCategory] = useState("Todas")
   const [search, setSearch] = useState("")
   const [modalConfig, setModalConfig] = useState(false)
+  
+  // Verificar si el usuario es bodeguero (rol_id_rol === 3)
+  // Los bodegueros no pueden configurar alertas
+  const isBodeguero = user?.rol_id_rol === 3
   const [alertas, setAlertas] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [config, setConfig] = useState(() => {
@@ -217,7 +223,7 @@ export default function Alertas() {
         vencimiento:
           item.fec_vencimiento === "9999-12-31"
             ? "N/A"
-            : new Date(item.fec_vencimiento).toLocaleDateString(),
+            : new Date(item.fec_vencimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
         cantidad: item.cant_actual,
       }
     })
@@ -238,22 +244,25 @@ export default function Alertas() {
             Gestión y monitoreo de alertas de fármacos
           </p>
         </div>
-        <div className="flex gap-2 mt-2 md:mt-0">
-          <Button
-            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-            onClick={() => setModalConfig(true)}
-            disabled={loading}
-          >
-            {loading ? (
-              "Generando..."
-            ) : (
-              <>
-                <Settings className="h-5 w-5" />
-                Configurar alertas
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Solo mostrar botón de Configurar alertas si el usuario no es bodeguero */}
+        {!isBodeguero && (
+          <div className="flex gap-2 mt-2 md:mt-0">
+            <Button
+              className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+              onClick={() => setModalConfig(true)}
+              disabled={loading}
+            >
+              {loading ? (
+                "Generando..."
+              ) : (
+                <>
+                  <Settings className="h-5 w-5" />
+                  Configurar alertas
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filtros y búsqueda */}

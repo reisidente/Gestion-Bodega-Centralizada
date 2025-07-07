@@ -21,6 +21,54 @@ const initialForm = {
   observacion: "",
 }
 
+// Unidades de medida más comunes en farmacéutica
+const unidadesMedidaComunes = [
+  "mg", // miligramos
+  "g", // gramos
+  "kg", // kilogramos
+  "ml", // mililitros
+  "l", // litros
+  "mcg", // microgramos
+  "UI", // unidades internacionales
+  "comprimidos",
+  "cápsulas",
+  "tabletas",
+  "sobres",
+  "ampollas",
+  "viales",
+  "gotas",
+  "supositorios",
+  "óvulos",
+  "parches",
+  "Otro"
+]
+
+// Presentaciones farmacéuticas más comunes
+const presentacionesComunes = [
+  "Tableta",
+  "Cápsula",
+  "Jarabe",
+  "Suspensión",
+  "Solución oral",
+  "Inyectable",
+  "Ampolla",
+  "Vial",
+  "Gotas",
+  "Crema",
+  "Gel",
+  "Pomada",
+  "Supositorio",
+  "Óvulo",
+  "Parche",
+  "Inhalador",
+  "Spray nasal",
+  "Colirio",
+  "Solución oftálmica",
+  "Polvo",
+  "Granulado",
+  "Otro"
+]
+
 export function RegistrarFarmacoModal({
   open,
   onClose,
@@ -29,6 +77,10 @@ export function RegistrarFarmacoModal({
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [unidadPersonalizada, setUnidadPersonalizada] = useState("")
+  const [mostrarUnidadPersonalizada, setMostrarUnidadPersonalizada] = useState(false)
+  const [presentacionPersonalizada, setPresentacionPersonalizada] = useState("")
+  const [mostrarPresentacionPersonalizada, setMostrarPresentacionPersonalizada] = useState(false)
 
   // Reiniciar el formulario cuando se abre el modal
   useEffect(() => {
@@ -36,11 +88,60 @@ export function RegistrarFarmacoModal({
       setForm(initialForm)
       setError("")
       setIsLoading(false)
+      setUnidadPersonalizada("")
+      setMostrarUnidadPersonalizada(false)
+      setPresentacionPersonalizada("")
+      setMostrarPresentacionPersonalizada(false)
     }
   }, [open])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  const handleConcentracionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value
+    // Solo permitir números y punto decimal
+    const regex = /^[0-9]*\.?[0-9]*$/
+    if (regex.test(valor) || valor === "") {
+      setForm({ ...form, concentracion: valor })
+    }
+  }
+
+  const handleUnidadMedidaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const valor = e.target.value
+    if (valor === "Otro") {
+      setMostrarUnidadPersonalizada(true)
+      setForm({ ...form, uni_medida: "" })
+    } else {
+      setMostrarUnidadPersonalizada(false)
+      setUnidadPersonalizada("")
+      setForm({ ...form, uni_medida: valor })
+    }
+  }
+
+  const handleUnidadPersonalizadaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value
+    setUnidadPersonalizada(valor)
+    setForm({ ...form, uni_medida: valor })
+  }
+
+  const handlePresentacionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const valor = e.target.value
+    if (valor === "Otro") {
+      setMostrarPresentacionPersonalizada(true)
+      setForm({ ...form, presentacion: "" })
+    } else {
+      setMostrarPresentacionPersonalizada(false)
+      setPresentacionPersonalizada("")
+      setForm({ ...form, presentacion: valor })
+    }
+  }
+
+  const handlePresentacionPersonalizadaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value
+    setPresentacionPersonalizada(valor)
+    setForm({ ...form, presentacion: valor })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,6 +150,26 @@ export function RegistrarFarmacoModal({
     setIsLoading(true)
     
     try {
+      // Validar unidad de medida personalizada
+      if (mostrarUnidadPersonalizada && unidadPersonalizada.trim()) {
+        const unidadesExistentes = unidadesMedidaComunes.filter(u => u !== "Otro").map(u => u.toLowerCase())
+        if (unidadesExistentes.includes(unidadPersonalizada.toLowerCase().trim())) {
+          setError("La unidad de medida personalizada ya existe en las opciones comunes")
+          setIsLoading(false)
+          return
+        }
+      }
+
+      // Validar presentación personalizada
+      if (mostrarPresentacionPersonalizada && presentacionPersonalizada.trim()) {
+        const presentacionesExistentes = presentacionesComunes.filter(p => p !== "Otro").map(p => p.toLowerCase())
+        if (presentacionesExistentes.includes(presentacionPersonalizada.toLowerCase().trim())) {
+          setError("La presentación personalizada ya existe en las opciones comunes")
+          setIsLoading(false)
+          return
+        }
+      }
+
       // Validar que el código no exista
       const { data: existingFarmaco, error: checkError } = await supabase
         .from("farmaco")
@@ -91,6 +212,7 @@ export function RegistrarFarmacoModal({
               name="codigo"
               value={form.codigo}
               onChange={handleChange}
+              placeholder="Ej: PARA500, IBU400, AMIT25"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -101,6 +223,7 @@ export function RegistrarFarmacoModal({
               name="nombre_comercial"
               value={form.nombre_comercial}
               onChange={handleChange}
+              placeholder="Ej: Paracetamol, Ibuprofeno, Aspirina"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -111,6 +234,7 @@ export function RegistrarFarmacoModal({
               name="nombre_generico"
               value={form.nombre_generico}
               onChange={handleChange}
+              placeholder="Ej: Acetaminofén, Ácido acetilsalicílico"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -121,19 +245,36 @@ export function RegistrarFarmacoModal({
               name="categoria"
               value={form.categoria}
               onChange={handleChange}
+              placeholder="Ej: Analgésico, Antibiótico, Antiinflamatorio"
               className="w-full border rounded-md px-3 py-2"
               required
             />
           </div>
           <div>
             <label className="block font-medium mb-1">Unidad de medida</label>
-            <input
-              name="uni_medida"
-              value={form.uni_medida}
-              onChange={handleChange}
+            <select
+              value={mostrarUnidadPersonalizada ? "Otro" : form.uni_medida}
+              onChange={handleUnidadMedidaChange}
               className="w-full border rounded-md px-3 py-2"
               required
-            />
+            >
+              <option value="">Seleccione una unidad</option>
+              {unidadesMedidaComunes.map((unidad) => (
+                <option key={unidad} value={unidad}>
+                  {unidad}
+                </option>
+              ))}
+            </select>
+            {mostrarUnidadPersonalizada && (
+              <input
+                type="text"
+                value={unidadPersonalizada}
+                onChange={handleUnidadPersonalizadaChange}
+                placeholder="Ingrese la unidad personalizada"
+                className="w-full border rounded-md px-3 py-2 mt-2"
+                required
+              />
+            )}
           </div>
           <div>
             <label className="block font-medium mb-1">Principio Activo</label>
@@ -141,26 +282,44 @@ export function RegistrarFarmacoModal({
               name="principio_activo"
               value={form.principio_activo}
               onChange={handleChange}
+              placeholder="Ej: Acetaminofén, Ibuprofeno, Amoxicilina"
               className="w-full border rounded-md px-3 py-2"
               required
             />
           </div>
           <div>
             <label className="block font-medium mb-1">Presentación</label>
-            <input
-              name="presentacion"
-              value={form.presentacion}
-              onChange={handleChange}
+            <select
+              value={mostrarPresentacionPersonalizada ? "Otro" : form.presentacion}
+              onChange={handlePresentacionChange}
               className="w-full border rounded-md px-3 py-2"
               required
-            />
+            >
+              <option value="">Seleccione una presentación</option>
+              {presentacionesComunes.map((presentacion) => (
+                <option key={presentacion} value={presentacion}>
+                  {presentacion}
+                </option>
+              ))}
+            </select>
+            {mostrarPresentacionPersonalizada && (
+              <input
+                type="text"
+                value={presentacionPersonalizada}
+                onChange={handlePresentacionPersonalizadaChange}
+                placeholder="Ingrese la presentación personalizada"
+                className="w-full border rounded-md px-3 py-2 mt-2"
+                required
+              />
+            )}
           </div>
           <div>
             <label className="block font-medium mb-1">Concentración</label>
             <input
               name="concentracion"
               value={form.concentracion}
-              onChange={handleChange}
+              onChange={handleConcentracionChange}
+              placeholder="Ej: 500, 10.5, 0.25"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -171,6 +330,7 @@ export function RegistrarFarmacoModal({
               name="via_administracion"
               value={form.via_administracion}
               onChange={handleChange}
+              placeholder="Ej: Oral, Intravenosa, Intramuscular, Tópica"
               className="w-full border rounded-md px-3 py-2"
               required
             />
@@ -181,6 +341,7 @@ export function RegistrarFarmacoModal({
               name="observacion"
               value={form.observacion}
               onChange={handleChange}
+              placeholder="Ej: Refrigerar, No exponer al sol, Uso pediátrico"
               className="w-full border rounded-md px-3 py-2"
             />
           </div>

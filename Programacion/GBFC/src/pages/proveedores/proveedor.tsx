@@ -5,12 +5,18 @@ import { RegistrarProveedorModal } from "../../components/modals/registrar_prove
 import { supabase } from "../../libs/supabase";
 import { Plus, Pencil, Trash } from "lucide-react";
 import { EditarProveedorModal } from "../../components/modals/editar_proveedor";
+import { useIsAdmin } from "../../hooks/useIsAdmin";
 
 export default function Proveedores() {
+  const { user } = useIsAdmin()
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalRegistrar, setModalRegistrar] = useState(false);
   const [modalEditar, setModalEditar] = useState<{ open: boolean; data?: any }>({ open: false });
+
+  // Verificar si el usuario es bodeguero (rol_id_rol === 3)
+  // Los bodegueros no pueden registrar, editar ni eliminar proveedores
+  const isBodeguero = user?.rol_id_rol === 3
 
   useEffect(() => {
     const fetchProveedores = async () => {
@@ -109,13 +115,16 @@ export default function Proveedores() {
             Gestión de proveedores de fármacos
           </p>
         </div>
-        <Button
-          className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-          onClick={() => setModalRegistrar(true)}
-        >
-          <Plus className="h-5 w-5" />
-          Registrar Proveedor
-        </Button>
+        {/* Solo mostrar botón de Registrar Proveedor si el usuario no es bodeguero */}
+        {!isBodeguero && (
+          <Button
+            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+            onClick={() => setModalRegistrar(true)}
+          >
+            <Plus className="h-5 w-5" />
+            Registrar Proveedor
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -133,9 +142,10 @@ export default function Proveedores() {
             { header: "Dirección", render: (item) => item.direccion, sortKey: "direccion" },
             { header: "Teléfono", render: (item) => item.telefono, sortKey: "telefono" },
             { header: "Email", render: (item) => item.email, sortKey: "email" },
-            {
+            // Solo mostrar columna de acciones si el usuario no es bodeguero
+            ...(isBodeguero ? [] : [{
               header: "Acciones",
-              render: (item) => (
+              render: (item: any) => (
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -153,7 +163,7 @@ export default function Proveedores() {
                   </Button>
                 </div>
               ),
-            },
+            }]),
           ]}
           data={proveedores}
         />

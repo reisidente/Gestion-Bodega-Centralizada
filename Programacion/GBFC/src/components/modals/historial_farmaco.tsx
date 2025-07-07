@@ -44,12 +44,15 @@ export function HistorialFarmacoModal({
 }: HistorialFarmacoModalProps) {
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
   const [loading, setLoading] = useState(false)
+  const [paginaActual, setPaginaActual] = useState(1)
+  const registrosPorPagina = 10
 
   useEffect(() => {
     const fetchHistorial = async () => {
       if (!open || !farmacoId) return
 
       setLoading(true)
+      setPaginaActual(1) // Resetear a la primera página cuando se abre el modal
       try {
         // 1. Obtener todos los lotes del fármaco
         const { data: lotes, error: lotesError } = await supabase
@@ -72,7 +75,7 @@ export function HistorialFarmacoModal({
           .from("historial_ajuste")
           .select("*")
           .in("lote_id_lote", loteIds)
-          .order("fec_ajuste", { ascending: true })
+          .order("fec_ajuste", { ascending: false })
 
         if (ajustesError) throw ajustesError
 
@@ -103,9 +106,9 @@ export function HistorialFarmacoModal({
           tipoMovimiento: ajuste.motivo // Para distinguir tipos de movimientos
         }))
 
-        // 5. Combinar y ordenar todos los movimientos por fecha
+        // 5. Combinar y ordenar todos los movimientos por fecha (más reciente primero)
         const todosMovimientos = [...movimientosLotesSinHistorial, ...movimientosAjustes]
-          .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
         // 6. Calcular stock total del fármaco en cada punto del tiempo
         // Primero obtenemos el stock actual de todos los lotes
@@ -116,18 +119,18 @@ export function HistorialFarmacoModal({
 
         const stockActualTotal = (lotesActuales || []).reduce((sum, lote) => sum + lote.cantidad, 0)
         
-        // Calcular el stock histórico basado en los movimientos
+        // Calcular el stock histórico basado en los movimientos (ahora de más nuevo a más viejo)
         const movimientosConStock = todosMovimientos.map((mov, index) => {
           // Para cada movimiento, calcular cuánto stock habría después de este movimiento
-          // sumando todos los movimientos posteriores al stock actual
-          let ajustePosteriores = 0
-          for (let i = index + 1; i < todosMovimientos.length; i++) {
-            const movPosterior = todosMovimientos[i]
-            // Las salidas reducen el stock, las entradas lo aumentan
-            ajustePosteriores += movPosterior.salidas - movPosterior.entradas
+          // Como ahora van de más nuevo a más viejo, sumamos todos los movimientos anteriores al stock actual
+          let ajusteAnteriores = 0
+          for (let i = 0; i < index; i++) {
+            const movAnterior = todosMovimientos[i]
+            // Las entradas aumentan el stock hacia atrás, las salidas lo reducen
+            ajusteAnteriores += movAnterior.entradas - movAnterior.salidas
           }
           
-          const stockEnEseMomento = stockActualTotal + ajustePosteriores
+          const stockEnEseMomento = stockActualTotal - ajusteAnteriores
           
           return {
             ...mov,
@@ -146,6 +149,18 @@ export function HistorialFarmacoModal({
 
     fetchHistorial()
   }, [open, farmacoId])
+
+  // Calcular datos de paginación
+  const totalPaginas = Math.ceil(movimientos.length / registrosPorPagina)
+  const indiceInicio = (paginaActual - 1) * registrosPorPagina
+  const indiceFin = indiceInicio + registrosPorPagina
+  const movimientosPaginados = movimientos.slice(indiceInicio, indiceFin)
+
+  const irAPagina = (pagina: number) => {
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      setPaginaActual(pagina)
+    }
+  }
 
   return (
     <BaseModal open={open} onClose={onClose} widthClass="max-w-2xl">
@@ -173,14 +188,14 @@ export function HistorialFarmacoModal({
               </tr>
             </thead>
             <tbody>
-              {movimientos.length === 0 ? (
+              {movimientosPaginados.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400">
                     No hay movimientos registrados.
                   </td>
                 </tr>
               ) : (
-                movimientos.map((item, idx) => (
+                movimientosPaginados.map((item, idx) => (
                   <tr
                     key={item.id}
                     className={idx % 2 === 1 ? "bg-gray-50" : ""}
@@ -246,6 +261,62 @@ export function HistorialFarmacoModal({
               )}
             </tbody>
           </table>
+        )}
+        
+        {/* Controles de paginación */}
+        {!loading && movimientos.length > registrosPorPagina && (
+          <div className="flex items-center justify-between mt-4 px-4">
+            <div className="text-sm text-gray-500">
+              Mostrando {indiceInicio + 1} a {Math.min(indiceFin, movimientos.length)} de {movimientos.length} registros
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => irAPagina(paginaActual - 1)}
+                disabled={paginaActual === 1}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Anterior
+              </button>
+              
+              {/* Números de página */}
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                  let numeroPagina
+                  if (totalPaginas <= 5) {
+                    numeroPagina = i + 1
+                  } else if (paginaActual <= 3) {
+                    numeroPagina = i + 1
+                  } else if (paginaActual >= totalPaginas - 2) {
+                    numeroPagina = totalPaginas - 4 + i
+                  } else {
+                    numeroPagina = paginaActual - 2 + i
+                  }
+                  
+                  return (
+                    <button
+                      key={numeroPagina}
+                      onClick={() => irAPagina(numeroPagina)}
+                      className={`px-3 py-1 text-sm border rounded ${
+                        paginaActual === numeroPagina
+                          ? 'bg-black text-white border-black'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {numeroPagina}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <button
+                onClick={() => irAPagina(paginaActual + 1)}
+                disabled={paginaActual === totalPaginas}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </BaseModal>

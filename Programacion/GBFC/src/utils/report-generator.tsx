@@ -19,20 +19,20 @@ const reportColumns: { [key: string]: any[] } = {
     "Vencimientos": [
         { header: "Fármaco", render: (item: any) => item.nombre_farmaco, getValue: (item: any) => item.nombre_farmaco },
         { header: "Lote", render: (item: any) => item.lote, getValue: (item: any) => item.lote },
-        { header: "Fecha Vencimiento", render: (item: any) => new Date(item.fecha_vencimiento).toLocaleDateString(), getValue: (item: any) => new Date(item.fecha_vencimiento).toLocaleDateString() },
+        { header: "Fecha Vencimiento", render: (item: any) => new Date(item.fecha_vencimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }), getValue: (item: any) => new Date(item.fecha_vencimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) },
         { header: "Días para Vencer", render: (item: any) => item.dias_para_vencer, getValue: (item: any) => item.dias_para_vencer },
     ],
     "Inventario": [
         { header: "Fármaco", render: (item: any) => item.farmaco.nombre_farmaco, getValue: (item: any) => item.farmaco.nombre_farmaco },
         { header: "Proveedor", render: (item: any) => item.proveedor.nombre_proveedor, getValue: (item: any) => item.proveedor.nombre_proveedor },
         { header: "Stock Actual", render: (item: any) => item.stock_actual, getValue: (item: any) => item.stock_actual },
-        { header: "Última Actualización", render: (item: any) => new Date(item.fecha_actualizacion).toLocaleString(), getValue: (item: any) => new Date(item.fecha_actualizacion).toLocaleString() },
+        { header: "Última Actualización", render: (item: any) => new Date(item.fecha_actualizacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(item.fecha_actualizacion).toLocaleTimeString('es-ES'), getValue: (item: any) => new Date(item.fecha_actualizacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(item.fecha_actualizacion).toLocaleTimeString('es-ES') },
     ],
     "Movimientos": [
         { header: "Fármaco", render: (item: any) => item.farmaco.nombre_farmaco, getValue: (item: any) => item.farmaco.nombre_farmaco },
         { header: "Tipo Movimiento", render: (item: any) => item.tipo_movimiento.nombre_movimiento, getValue: (item: any) => item.tipo_movimiento.nombre_movimiento },
         { header: "Cantidad", render: (item: any) => item.cantidad, getValue: (item: any) => item.cantidad },
-        { header: "Fecha", render: (item: any) => new Date(item.fecha_movimiento).toLocaleString(), getValue: (item: any) => new Date(item.fecha_movimiento).toLocaleString() },
+        { header: "Fecha", render: (item: any) => new Date(item.fecha_movimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(item.fecha_movimiento).toLocaleTimeString('es-ES'), getValue: (item: any) => new Date(item.fecha_movimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + new Date(item.fecha_movimiento).toLocaleTimeString('es-ES') },
         { header: "Justificación", render: (item: any) => item.justificacion, getValue: (item: any) => item.justificacion },
     ],
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, MoreVertical, Pencil, Package, Clock, Tag, Trash2, Eye, EyeOff } from "lucide-react"
+import { Plus, MoreVertical, Pencil, Package, Clock, Tag, Trash2, Eye, EyeOff, Lock, Unlock } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
 import { TableContainer } from "../../components/ui/table"
@@ -12,9 +12,15 @@ import { AgregarLoteModal } from "../../components/modals/agregar_lote"
 import { SeleccionarFarmacoParaLoteModal } from "../../components/modals/selecionar_farmaco"
 import { supabase } from "../../libs/supabase"
 import { getFechaLocal, guardarTimestampActividad } from "../../libs/utils"
+import { useIsAdmin } from "../../hooks/useIsAdmin"
 
 export default function Inventario() {
+  const { user } = useIsAdmin()
   const [selectedCategory, setSelectedCategory] = useState("Todos")
+  
+  // Verificar si el usuario es bodeguero (rol_id_rol === 3)
+  // Los bodegueros no pueden agregar lotes ni registrar fármacos
+  const isBodeguero = user?.rol_id_rol === 3
   const [openMenu, setOpenMenu] = useState<number | null>(null)
   const [search, setSearch] = useState("")
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
@@ -62,7 +68,7 @@ export default function Inventario() {
           supabase
             .from("lote")
             .select(
-              "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor"
+              "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor, activo"
             ),
           supabase.from("proveedor").select("*"),
         ])
@@ -105,11 +111,10 @@ export default function Inventario() {
       return []
     }
 
-    if (!mostrarStockCero && totalStock === 0) {
-      return []
-    }
-
-    return lotesFarmaco.map((lote) => {
+    return lotesFarmaco.filter((lote) => {
+      // Filtrar lotes con stock 0 si la opción está deshabilitada
+      return mostrarStockCero || lote.cantidad > 0
+    }).map((lote) => {
       const vencimientoParts = lote.fec_venci.split("-").map(Number);
       const vencimientoDate = new Date(vencimientoParts[0], vencimientoParts[1] - 1, vencimientoParts[2]);
 
@@ -117,7 +122,9 @@ export default function Inventario() {
       
       let estado = "Disponible";
 
-      if (isStockBajo) {
+      if (!lote.activo) {
+        estado = "Bloqueado";
+      } else if (isStockBajo) {
         estado = "Stock bajo";
       } 
       else if (isProximoAVencer) {
@@ -137,6 +144,7 @@ export default function Inventario() {
         estado,
         id_lote: lote.id_lote,
         totalStock,
+        activo: lote.activo || false,
       }
     })
   })
@@ -154,6 +162,8 @@ export default function Inventario() {
         return "destructive"
       case "Proximo a vencer":
         return "warning"
+      case "Bloqueado":
+        return "secondary"
     }
   }
 
@@ -165,7 +175,20 @@ export default function Inventario() {
   )
 
   const handleEliminarLote = async (item: any) => {
-    if (item.stock > 0) {
+    // Verificar el stock actual del lote específico en la base de datos
+    const { data: loteActual, error: verificarError } = await supabase
+      .from("lote")
+      .select("cantidad")
+      .eq("id_lote", item.id_lote)
+      .single();
+
+    if (verificarError) {
+      console.error("Error al verificar el lote:", verificarError);
+      alert("Error al verificar el estado del lote.");
+      return;
+    }
+
+    if (!loteActual || loteActual.cantidad > 0) {
       alert("No se puede eliminar un lote que tiene stock disponible.");
       return;
     }
@@ -185,7 +208,7 @@ export default function Inventario() {
         const { data: lotesData } = await supabase
           .from("lote")
           .select(
-            "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor"
+            "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor, activo"
           );
 
         if (lotesData) {
@@ -194,6 +217,44 @@ export default function Inventario() {
       } catch (error) {
         console.error("Error al eliminar lote:", error);
         alert("Error inesperado al eliminar el lote.");
+      }
+    }
+  };
+
+  const handleBloquearLote = async (item: any) => {
+    const accion = !item.activo ? "desbloquear" : "bloquear";
+    const mensaje = !item.activo 
+      ? `¿Está seguro de que desea desbloquear el lote "${item.lote}" del fármaco "${item.nombre}"?`
+      : `¿Está seguro de que desea bloquear el lote "${item.lote}" del fármaco "${item.nombre}"? Los lotes bloqueados no estarán disponibles para solicitudes.`;
+
+    if (window.confirm(mensaje)) {
+      try {
+        const { error: loteError } = await supabase
+          .from("lote")
+          .update({ activo: !item.activo })
+          .eq("id_lote", item.id_lote);
+
+        if (loteError) {
+          console.error(`Error al ${accion} lote:`, loteError);
+          alert(`Error al ${accion} el lote.`);
+          return;
+        }
+
+        // Actualizar la lista de lotes
+        const { data: lotesData } = await supabase
+          .from("lote")
+          .select(
+            "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor, activo"
+          );
+
+        if (lotesData) {
+          setLotes(lotesData);
+        }
+
+        alert(`Lote ${!item.activo ? "desbloqueado" : "bloqueado"} correctamente.`);
+      } catch (error) {
+        console.error(`Error al ${accion} lote:`, error);
+        alert(`Error inesperado al ${accion} el lote.`);
       }
     }
   };
@@ -218,20 +279,25 @@ export default function Inventario() {
             {mostrarStockCero ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {mostrarStockCero ? "Ocultar Stock 0" : "Mostrar Stock 0"}
           </Button>
-          <Button
-            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-            onClick={() => setModalSeleccionarFarmaco(true)}
-          >
-            <Tag className="h-5 w-5" />
-            Añadir Lote
-          </Button>
-          <Button
-            className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
-            onClick={() => setModalRegistrar(true)} // <-- Abre el modal al hacer click
-          >
-            <Plus className="h-5 w-5" />
-            Registrar Fármaco
-          </Button>
+          {/* Solo mostrar botones de Añadir Lote y Registrar Fármaco si el usuario no es bodeguero */}
+          {!isBodeguero && (
+            <>
+              <Button
+                className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+                onClick={() => setModalSeleccionarFarmaco(true)}
+              >
+                <Tag className="h-5 w-5" />
+                Añadir Lote
+              </Button>
+              <Button
+                className="flex items-center gap-2 font-medium bg-black hover:bg-gray-900 text-white"
+                onClick={() => setModalRegistrar(true)} // <-- Abre el modal al hacer click
+              >
+                <Plus className="h-5 w-5" />
+                Registrar Fármaco
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -267,7 +333,16 @@ export default function Inventario() {
         columns={[
           { header: "Código", render: item => <span className="font-medium text-gray-900">{item.codigo}</span>, sortKey: "codigo" },
           { header: "Nombre", render: item => item.nombre, sortKey: "nombre" },
-          { header: "Lote", render: item => item.lote, sortKey: "lote" },
+          { 
+            header: "Lote", 
+            render: item => (
+              <span className="font-medium">
+                {item.lote}
+                <span className="ml-1 text-xs text-gray-500">#{item.id_lote}</span>
+              </span>
+            ), 
+            sortKey: "lote" 
+          },
           { header: "Categoría", render: item => item.categoria, sortKey: "categoria" },
           { header: "Stock", render: item => item.stock, sortKey: "stock" },
           {
@@ -296,6 +371,8 @@ export default function Inventario() {
                     ? "bg-red-500/90 text-white"
                     : item.estado === "Proximo a vencer"
                     ? "bg-yellow-500/90 text-white"
+                    : item.estado === "Bloqueado"
+                    ? "bg-gray-500/90 text-white"
                     : ""
                 }`}
               >
@@ -309,17 +386,17 @@ export default function Inventario() {
             render: item => (
               <div className="flex items-center">
                 <Button
-                  ref={el => { buttonRefs.current[item.id] = el }}
+                  ref={el => { buttonRefs.current[item.id_lote] = el }}
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 p-0"
                   onClick={() => {
-                    const buttonElement = buttonRefs.current[item.id]
+                    const buttonElement = buttonRefs.current[item.id_lote]
                     if (!buttonElement) return
 
                     const rect = buttonElement.getBoundingClientRect()
-                    const isMenuOpen = openMenu === item.id
-                    setOpenMenu(isMenuOpen ? null : item.id)
+                    const isMenuOpen = openMenu === item.id_lote
+                    setOpenMenu(isMenuOpen ? null : item.id_lote)
 
                     if (!isMenuOpen) {
                       const menuWidth = 200
@@ -342,7 +419,7 @@ export default function Inventario() {
                   <MoreVertical className="h-5 w-5" />
                 </Button>
                 <AnimatePresence>
-                  {openMenu === item.id && menuPosition && (
+                  {openMenu === item.id_lote && menuPosition && (
                     <>
                       <div
                         className="fixed inset-0 z-10"
@@ -360,60 +437,99 @@ export default function Inventario() {
                           left: menuPosition.left,
                         }}
                       >
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalEditar({
-                              open: true,
-                              data: {
-                                ...item,
-                                id_farmaco: item.id,
-                                uni_medida: item.uni_medida,
-                                precio: item.precio
-                              }
-                            })
-                            setOpenMenu(null)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" /> Editar
-                        </button>
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalAgregarLote({ open: true, data: item })
-                            setOpenMenu(null)
-                          }}
-                        >
-                          <Tag className="h-4 w-4" /> Agregar lote
-                        </button>
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalAjuste({ open: true, data: item })
-                            setOpenMenu(null)
-                          }}
-                        >
-                          <Package className="h-4 w-4" /> Ajustar stock
-                        </button>
-                        <button
-                          className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
-                          onClick={() => {
-                            setModalHistorial({ open: true, data: item })
-                            setOpenMenu(null)
-                          }}
-                        >
-                          <Clock className="h-4 w-4" /> Historial
-                        </button>
-                        {item.stock === 0 && (
+                        {/* Si es bodeguero, solo mostrar opción de Historial */}
+                        {isBodeguero ? (
                           <button
-                            className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-red-50 text-red-600 transition-colors"
+                            className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
                             onClick={() => {
-                              handleEliminarLote(item)
+                              setModalHistorial({ open: true, data: item })
                               setOpenMenu(null)
                             }}
                           >
-                             <Trash2 className="h-4 w-4" /> Eliminar Lote
+                            <Clock className="h-4 w-4" /> Historial
                           </button>
+                        ) : (
+                          /* Si no es bodeguero, mostrar todas las opciones */
+                          <>
+                            <button
+                              className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                              onClick={() => {
+                                // Buscar el fármaco completo con todos sus datos
+                                const farmacoCompleto = farmacos.find(f => f.id_farmaco === item.id);
+                                setModalEditar({
+                                  open: true,
+                                  data: {
+                                    ...farmacoCompleto,
+                                    id: item.id,
+                                    precio: item.precio,
+                                    id_lote: item.id_lote,
+                                  }
+                                })
+                                setOpenMenu(null)
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" /> Editar
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                              onClick={() => {
+                                setModalAgregarLote({ open: true, data: item })
+                                setOpenMenu(null)
+                              }}
+                            >
+                              <Tag className="h-4 w-4" /> Agregar lote
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                              onClick={() => {
+                                setModalAjuste({ open: true, data: item })
+                                setOpenMenu(null)
+                              }}
+                            >
+                              <Package className="h-4 w-4" /> Ajustar stock
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-gray-100 transition-colors"
+                              onClick={() => {
+                                setModalHistorial({ open: true, data: item })
+                                setOpenMenu(null)
+                              }}
+                            >
+                              <Clock className="h-4 w-4" /> Historial
+                            </button>
+                            <button
+                              className={`flex items-center gap-2 w-full text-left text-base py-2 px-4 transition-colors ${
+                                !item.activo 
+                                  ? "hover:bg-green-50 text-green-600" 
+                                  : "hover:bg-orange-50 text-orange-600"
+                              }`}
+                              onClick={() => {
+                                handleBloquearLote(item)
+                                setOpenMenu(null)
+                              }}
+                            >
+                              {!item.activo ? (
+                                <>
+                                  <Unlock className="h-4 w-4" /> Desbloquear Lote
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="h-4 w-4" /> Bloquear Lote
+                                </>
+                              )}
+                            </button>
+                            {item.stock === 0 && (
+                              <button
+                                className="flex items-center gap-2 w-full text-left text-base py-2 px-4 hover:bg-red-50 text-red-600 transition-colors"
+                                onClick={() => {
+                                  handleEliminarLote(item)
+                                  setOpenMenu(null)
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" /> Eliminar Lote
+                              </button>
+                            )}
+                          </>
                         )}
                       </motion.div>
                     </>
@@ -447,9 +563,14 @@ export default function Inventario() {
               .from("farmaco")
               .update({
                 nombre_comercial: data.nombre_comercial,
+                nombre_generico: data.nombre_generico,
                 categoria: data.categoria,
-                codigo: data.codigo,
                 uni_medida: data.uni_medida,
+                principio_activo: data.principio_activo,
+                presentacion: data.presentacion,
+                concentracion: data.concentracion,
+                via_administracion: data.via_administracion,
+                observacion: data.observacion,
               })
               .eq("id_farmaco", modalEditar.data.id);
 
@@ -480,7 +601,7 @@ export default function Inventario() {
                 ),
               supabase
                 .from("lote")
-                .select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco")
+                .select("id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, activo")
             ]);
 
             if (farmacosData && lotesData) {
@@ -540,7 +661,7 @@ export default function Inventario() {
           const { data: lotesData } = await supabase
             .from("lote")
             .select(
-              "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor"
+              "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor, activo"
             );
           setLotes(lotesData || []);
           setModalAjuste({ open: false });
@@ -619,19 +740,20 @@ export default function Inventario() {
           
           try {
             // Validaciones adicionales en el lado del servidor
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const vencimientoDate = new Date(form.fechaVencimiento)
-            vencimientoDate.setHours(0, 0, 0, 0)
-            const fabricacionDate = new Date(form.fechaFabricacion)
-            fabricacionDate.setHours(0, 0, 0, 0)
+            const now = new Date()
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0]
 
-            if (vencimientoDate < today) {
-              alert("La fecha de vencimiento no puede ser anterior a la fecha actual.")
+            if (form.fechaFabricacion > today) {
+              alert("La fecha de fabricación debe ser igual o anterior a la fecha actual.")
               return
             }
 
-            if (vencimientoDate <= fabricacionDate) {
+            if (form.fechaVencimiento < today) {
+              alert("La fecha de vencimiento debe ser igual o posterior a la fecha actual.")
+              return
+            }
+
+            if (form.fechaVencimiento <= form.fechaFabricacion) {
               alert("La fecha de vencimiento debe ser posterior a la fecha de fabricación.")
               return
             }
@@ -676,7 +798,7 @@ export default function Inventario() {
             const { data: lotesData } = await supabase
               .from("lote")
               .select(
-                "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor"
+                "id_lote, num_lote, fec_fabri, fec_venci, cantidad, precio, farmaco_id_farmaco, id_proveedor, activo"
               );
             setLotes(lotesData || []);
           } catch (error) {

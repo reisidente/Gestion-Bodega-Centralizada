@@ -57,11 +57,13 @@ const initialState = {
 export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModalProps) {
   const [data, setData] = useState(initialState)
   const [farmacias, setFarmacias] = useState<any[]>([])
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   // Reiniciar datos cuando se abre el modal
   useEffect(() => {
     if (open) {
       setData(initialState)
+      setErrors({})
     }
   }, [open])
 
@@ -87,16 +89,95 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
       // Reset parámetros si cambia el tipo
       ...(field === "tipo" ? { parametros: {} } : {}),
     }))
+    
+    // Validar título en tiempo real
+    if (field === "titulo") {
+      const newErrors = { ...errors }
+      if (!value.trim()) {
+        newErrors.titulo = "El título del reporte es obligatorio"
+      } else {
+        delete newErrors.titulo
+      }
+      setErrors(newErrors)
+    }
+    
+    // Limpiar errores si se cambia el tipo de reporte
+    if (field === "tipo") {
+      setErrors({})
+    }
   }
 
   const handleParametro = (field: string, value: any) => {
-    setData(prev => ({
-      ...prev,
-      parametros: {
+    setData(prev => {
+      const newParametros = {
         ...prev.parametros,
         [field]: value,
-      },
-    }))
+      }
+      
+      // Validación especial para fechas en reportes de movimientos
+      if (prev.tipo === "Movimientos") {
+        const movimientosParams = newParametros as ParametrosMovimientos
+        // Obtener la fecha actual en formato YYYY-MM-DD en la zona horaria local
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0]
+        
+        // Si se cambia la fecha de inicio y hay una fecha de fin
+        if (field === "fechaInicio" && movimientosParams.fechaFin) {
+          // Si la fecha de fin es menor a la nueva fecha de inicio, limpiarla
+          if (value && movimientosParams.fechaFin < value) {
+            movimientosParams.fechaFin = ""
+          }
+        }
+        
+        // Validar fechas y actualizar errores
+        const newErrors = { ...errors }
+        if (field === "fechaInicio") {
+          if (value && value > today) {
+            newErrors.fechaInicio = "La fecha de inicio debe ser igual o anterior a la fecha actual"
+          } else {
+            delete newErrors.fechaInicio
+          }
+        }
+        if (field === "fechaFin") {
+          if (value && movimientosParams.fechaInicio && value < movimientosParams.fechaInicio) {
+            newErrors.fechaFin = "La fecha de fin debe ser igual o posterior a la fecha de inicio"
+          } else {
+            delete newErrors.fechaFin
+          }
+        }
+        setErrors(newErrors)
+      }
+      
+      return {
+        ...prev,
+        parametros: newParametros,
+      }
+    })
+  }
+
+  const isFormValid = () => {
+    if (!data.titulo.trim()) return false
+    if (Object.keys(errors).length > 0) return false
+    
+    // Validaciones específicas para reportes de movimientos
+    if (data.tipo === "Movimientos") {
+      const parametros = data.parametros as ParametrosMovimientos
+      // Obtener la fecha actual en formato YYYY-MM-DD en la zona horaria local
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0]
+      
+      // Si hay fecha de inicio, validar que sea igual o anterior a hoy
+      if (parametros.fechaInicio && parametros.fechaInicio > today) {
+        return false
+      }
+      
+      // Si hay ambas fechas, validar que fecha fin sea igual o posterior a fecha inicio
+      if (parametros.fechaInicio && parametros.fechaFin && parametros.fechaFin < parametros.fechaInicio) {
+        return false
+      }
+    }
+    
+    return true
   }
 
   const renderParametros = () => {
@@ -184,6 +265,9 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
       }
       case "Movimientos": {
         const parametros = data.parametros as ParametrosMovimientos
+        // Obtener la fecha actual en formato YYYY-MM-DD en la zona horaria local
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().split('T')[0]
         return (
           <>
             <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,19 +275,43 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
                 <label className="block font-medium mb-1">Fecha de inicio</label>
                 <input
                   type="date"
-                  className="w-full border rounded-md px-3 py-2"
+                  className={`w-full border rounded-md px-3 py-2 ${
+                    errors.fechaInicio ? "border-red-500" : ""
+                  }`}
                   value={parametros.fechaInicio || ""}
+                  max={today}
                   onChange={e => handleParametro("fechaInicio", e.target.value)}
                 />
+                {errors.fechaInicio ? (
+                  <div className="text-red-500 text-sm mt-1">
+                    {errors.fechaInicio}
+                  </div>
+                ) : (
+                  <div className="text-gray-400 text-sm mt-1">
+                    Debe ser igual o anterior a la fecha actual
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block font-medium mb-1">Fecha de fin</label>
                 <input
                   type="date"
-                  className="w-full border rounded-md px-3 py-2"
+                  className={`w-full border rounded-md px-3 py-2 ${
+                    errors.fechaFin ? "border-red-500" : ""
+                  }`}
                   value={parametros.fechaFin || ""}
+                  min={parametros.fechaInicio || ""}
                   onChange={e => handleParametro("fechaFin", e.target.value)}
                 />
+                {errors.fechaFin ? (
+                  <div className="text-red-500 text-sm mt-1">
+                    {errors.fechaFin}
+                  </div>
+                ) : (
+                  <div className="text-gray-400 text-sm mt-1">
+                    Debe ser igual o posterior a la fecha de inicio
+                  </div>
+                )}
               </div>
             </div>
             <div className="mb-4">
@@ -241,10 +349,18 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
           <div>
             <label className="block font-medium mb-1">Título</label>
             <input
-              className="w-full border rounded-md px-3 py-2"
+              className={`w-full border rounded-md px-3 py-2 ${
+                errors.titulo ? "border-red-500" : ""
+              }`}
               value={data.titulo}
               onChange={e => handleChange("titulo", e.target.value)}
+              placeholder="Ingrese el título del reporte"
             />
+            {errors.titulo && (
+              <div className="text-red-500 text-sm mt-1">
+                {errors.titulo}
+              </div>
+            )}
           </div>
           <div>
             <label className="block font-medium mb-1">Tipo de Reporte</label>
@@ -311,8 +427,22 @@ export function CrearReporteModal({ open, onClose, onCreate }: CrearReporteModal
           Cancelar
         </button>
         <button
-          className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
-          onClick={() => onCreate?.(data)}
+          className={`px-6 py-2 rounded-md font-medium ${
+            isFormValid()
+              ? "bg-black text-white hover:bg-gray-900"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
+          onClick={() => {
+            // Validar título antes de crear el reporte
+            if (!data.titulo.trim()) {
+              setErrors(prev => ({ ...prev, titulo: "El título del reporte es obligatorio" }))
+              return
+            }
+            if (isFormValid()) {
+              onCreate?.(data)
+            }
+          }}
+          disabled={!isFormValid()}
         >
           Crear reporte
         </button>

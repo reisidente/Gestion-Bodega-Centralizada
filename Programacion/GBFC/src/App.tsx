@@ -9,70 +9,71 @@ import Reportes from './pages/reportes/reportes'
 import { Sidebar } from './components/loyout/sliderbar'
 import NuevoUsuario from './pages/logins/nuevo-usuario'
 import Proveedores from './pages/proveedores/proveedor'
-
-<Route path="/" element={<Login />} />
+import ProtectedRoute from './components/loyout/ProtectedRoute'
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route
-          path="/dashboard"
-          element={
-            <Sidebar activeSection="home">
-              <Dashboard />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/inventario"
-          element={
-            <Sidebar activeSection="inventario">
-              <Inventario />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/solicitudes"
-          element={
-            <Sidebar activeSection="solicitudes">
-              <Solicitudes />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/alertas"
-          element={
-            <Sidebar activeSection="alertas">
-              <Alertas />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/reportes"
-          element={
-            <Sidebar activeSection="reportes">
-              <Reportes />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/nuevo-usuario"
-          element={
-            <Sidebar activeSection="usuarios">
-              <NuevoUsuario />
-            </Sidebar>
-          }
-        />
-        <Route
-          path="/proveedor"
-          element={
-            <Sidebar activeSection="proveedores">
-              <Proveedores />
-            </Sidebar>
-          }
-        />
+        <Route element={<ProtectedRoute />}>
+          <Route
+            path="/dashboard"
+            element={
+              <Sidebar activeSection="home">
+                <Dashboard />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/inventario"
+            element={
+              <Sidebar activeSection="inventario">
+                <Inventario />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/solicitudes"
+            element={
+              <Sidebar activeSection="solicitudes">
+                <Solicitudes />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/alertas"
+            element={
+              <Sidebar activeSection="alertas">
+                <Alertas />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/reportes"
+            element={
+              <Sidebar activeSection="reportes">
+                <Reportes />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/nuevo-usuario"
+            element={
+              <Sidebar activeSection="usuarios">
+                <NuevoUsuario />
+              </Sidebar>
+            }
+          />
+          <Route
+            path="/proveedor"
+            element={
+              <Sidebar activeSection="proveedores">
+                <Proveedores />
+              </Sidebar>
+            }
+          />
+        </Route>
       </Routes>
     </Router>
   )

@@ -41,6 +41,7 @@ export function OrdenCompraModal({
     prioridad: string
     medicamentos: any[]
   }>(initialForm)
+  const [error, setError] = useState("")
 
   // Reiniciar el formulario cuando se abre el modal
   useEffect(() => {
@@ -49,6 +50,7 @@ export function OrdenCompraModal({
         ...initialForm,
         fec_creacion: getFechaLocal(), // Fecha actual actualizada
       })
+      setError("") // Limpiar errores al abrir el modal
     }
   }, [open])
 
@@ -82,6 +84,23 @@ export function OrdenCompraModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Limpiar errores previos
+    setError("")
+    
+    // Validar que se haya seleccionado al menos un fármaco
+    if (!form.medicamentos || form.medicamentos.length === 0) {
+      setError("Debe seleccionar al menos un fármaco para crear la orden")
+      return
+    }
+    
+    // Validar que todos los medicamentos tengan cantidad válida
+    const medicamentosInvalidos = form.medicamentos.filter(m => !m.cantidad || Number(m.cantidad) <= 0)
+    if (medicamentosInvalidos.length > 0) {
+      setError("Todos los medicamentos deben tener una cantidad válida mayor a 0")
+      return
+    }
+    
     // cant_sol es la suma de cantidades solicitadas
     const cant_sol = form.medicamentos.reduce((sum, m) => sum + (Number(m.cantidad) || 0), 0)
     onEnviar({
@@ -169,8 +188,16 @@ export function OrdenCompraModal({
         </div>
         <div className="mb-6">
           <label className="block font-medium mb-1">Medicamentos</label>
-          <SelectorFarmacos value={form.medicamentos} onChange={handleMedicamentos} />
+          <SelectorFarmacos value={form.medicamentos} onChange={handleMedicamentos} mostrarLotes={false} />
         </div>
+        
+        {/* Mostrar error si existe */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600 text-sm font-medium">{error}</p>
+          </div>
+        )}
+        
         <div className="flex justify-end gap-2">
           <button
             type="button"

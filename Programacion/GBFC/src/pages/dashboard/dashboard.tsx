@@ -76,8 +76,9 @@ export default function Dashboard() {
         stockBajoCountResponse,
       ] = await Promise.all([
         supabase
-          .from("farmaco")
-          .select("id_farmaco", { count: "exact", head: true }),
+          .from("lote")
+          .select("id_lote", { count: "exact", head: true })
+          .gt("cantidad", 0),
         supabase
           .from("solicitud")
           .select("id_sol", { count: "exact", head: true })

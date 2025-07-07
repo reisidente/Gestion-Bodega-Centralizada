@@ -80,7 +80,11 @@ export default function Reportes() {
     setModalCrear(false)
 
     const doc = new jsPDF()
-    const fecha = new Date().toLocaleDateString()
+    const fecha = new Date().toLocaleDateString('es-ES', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    })
     const hora = new Date().toLocaleTimeString()
     const fileName = `${config.tipo}_${config.titulo.replace(
       /\s+/g,
@@ -110,9 +114,9 @@ export default function Reportes() {
     doc.text(config.titulo, 35, 45)
 
     doc.setFont('helvetica', 'bold')
-    doc.text('Fecha:', 14, 52)
+    doc.text('Fecha de creación:', 14, 52)
     doc.setFont('helvetica', 'normal')
-    doc.text(`${fecha} - ${hora}`, 35, 52)
+    doc.text(`${fecha} - ${hora}`, 60, 52)
 
     let startY = 62
     
@@ -122,7 +126,11 @@ export default function Reportes() {
       if (config.parametros?.fechaInicio) {
         doc.text('Período:', 14, startY)
         doc.setFont('helvetica', 'normal')
-        doc.text(`${config.parametros.fechaInicio} - ${config.parametros?.fechaFin || "Presente"}`, 35, startY)
+        const fechaInicio = new Date(config.parametros.fechaInicio).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const fechaFin = config.parametros?.fechaFin 
+          ? new Date(config.parametros.fechaFin).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : "Presente"
+        doc.text(`${fechaInicio} - ${fechaFin}`, 35, startY)
         startY += 7
       }
       if (config.parametros?.farmacia) {
@@ -192,6 +200,7 @@ export default function Reportes() {
               num_lote,
               fec_venci,
               cantidad,
+              activo,
               farmaco!farmaco_id_farmaco(
                 nombre_comercial,
                 codigo,
@@ -207,7 +216,7 @@ export default function Reportes() {
             incluirStockCero || lote.cantidad > 0
           ) || []
 
-          head = [["Nombre Comercial", "Código", "Categoría", "Nº Lote", "Stock", "U. Medida", "Vencimiento"]]
+          head = [["Nombre Comercial", "Código", "Categoría", "Nº Lote", "Stock", "U. Medida", "Vencimiento", "Estado"]]
           tableData = lotesConStock.map((lote: any) => [
             lote.farmaco?.nombre_comercial || "N/A",
             lote.farmaco?.codigo || "N/A",
@@ -217,7 +226,12 @@ export default function Reportes() {
             lote.farmaco?.uni_medida || "N/A",
             lote.fec_venci === "9999-12-31" 
               ? "N/A" 
-              : new Date(lote.fec_venci).toLocaleDateString(),
+              : new Date(lote.fec_venci).toLocaleDateString('es-ES', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                }),
+            lote.activo ? "Activo" : "Bloqueado"
           ])
           break
         }
@@ -235,7 +249,11 @@ export default function Reportes() {
               a.mensaje,
               a.fec_vencimiento === "9999-12-31"
                 ? "N/A"
-                : new Date(a.fec_vencimiento).toLocaleDateString(),
+                : new Date(a.fec_vencimiento).toLocaleDateString('es-ES', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                  }),
             ]) || []
           break
         }
@@ -304,9 +322,17 @@ export default function Reportes() {
                 farmacosMap.get(detalle.id_farmaco) || "N/A",
                 detalle.cant_despacho?.toString() || "0",
                 detalle.fec_despacho 
-                  ? new Date(detalle.fec_despacho).toLocaleDateString()
+                  ? new Date(detalle.fec_despacho).toLocaleDateString('es-ES', { 
+                      day: '2-digit', 
+                      month: '2-digit', 
+                      year: 'numeric' 
+                    })
                   : "N/A",
-                new Date(solicitud.fec_creacion).toLocaleDateString(),
+                new Date(solicitud.fec_creacion).toLocaleDateString('es-ES', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                }),
                 diasTranscurridos > 0 ? `${diasTranscurridos} días` : "Mismo día",
               ])
             })
@@ -443,7 +469,11 @@ export default function Reportes() {
             lote.farmaco.categoria,
             lote.num_lote,
             lote.cantidad.toString(),
-            new Date(lote.fec_venci).toLocaleDateString(),
+            new Date(lote.fec_venci).toLocaleDateString('es-ES', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric' 
+            }),
             lote.diasRestantes > 0 ? `${lote.diasRestantes} días` : "Vencido",
           ])
           break
@@ -487,9 +517,11 @@ export default function Reportes() {
         const farmacosUnicos = new Set(tableData.map(row => row[0])).size
         const categoriasUnicas = new Set(tableData.map(row => row[2])).size
         const lotesConStock = tableData.filter(row => parseInt(row[4]) > 0).length
+        const lotesActivos = tableData.filter(row => row[7] === "Activo").length
+        const lotesBloqueados = tableData.filter(row => row[7] === "Bloqueado").length
         
         doc.setFillColor(248, 249, 250)
-        doc.rect(14, finalY + 10, 182, 42, 'F')
+        doc.rect(14, finalY + 10, 182, 48, 'F')
         doc.setTextColor(52, 73, 94)
         doc.setFontSize(11)
         doc.setFont('helvetica', 'bold')
@@ -498,10 +530,12 @@ export default function Reportes() {
         doc.setFont('helvetica', 'normal')
         doc.text(`• Total de lotes: ${totalLotes}`, 20, finalY + 30)
         doc.text(`• Lotes con stock: ${lotesConStock}`, 20, finalY + 36)
-        doc.text(`• Cantidad total: ${cantidadTotal.toLocaleString()} unidades`, 20, finalY + 42)
-        doc.text(`• Fármacos únicos: ${farmacosUnicos}`, 110, finalY + 30)
-        doc.text(`• Categorías: ${categoriasUnicas}`, 110, finalY + 36)
-        doc.text(`• Stock promedio/lote: ${Math.round(cantidadTotal / totalLotes)} unidades`, 110, finalY + 42)
+        doc.text(`• Lotes activos: ${lotesActivos}`, 20, finalY + 42)
+        doc.text(`• Lotes bloqueados: ${lotesBloqueados}`, 20, finalY + 48)
+        doc.text(`• Cantidad total: ${cantidadTotal.toLocaleString()} unidades`, 110, finalY + 30)
+        doc.text(`• Fármacos únicos: ${farmacosUnicos}`, 110, finalY + 36)
+        doc.text(`• Categorías: ${categoriasUnicas}`, 110, finalY + 42)
+        doc.text(`• Stock promedio/lote: ${Math.round(cantidadTotal / totalLotes)} unidades`, 110, finalY + 48)
       }
 
       if (config.tipo === "Movimientos" && tableData.length > 0) {
@@ -638,7 +672,11 @@ export default function Reportes() {
     return {
       nombre: parts.length > 1 ? parts[1].replace(/_/g, " ") : file.name,
       tipo: parts[0],
-      fecha: new Date(file.created_at).toLocaleDateString(),
+      fecha: new Date(file.created_at).toLocaleDateString('es-ES', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      }),
       url: getPublicUrl(file.name),
       fileName: file.name,
     }
