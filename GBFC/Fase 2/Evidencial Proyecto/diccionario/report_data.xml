@@ -4,7 +4,7 @@
    <osdmAllTables:CompanyName>GBFC</osdmAllTables:CompanyName>
    <osdmAllTables:UsePageBreaks>true</osdmAllTables:UsePageBreaks>
    <osdmAllTables:DesignName>GBFC</osdmAllTables:DesignName>
-   <osdmAllTables:VersionDate>16.06.2025 08:43:17</osdmAllTables:VersionDate>
+   <osdmAllTables:VersionDate>08.07.2025 08:21:06</osdmAllTables:VersionDate>
    <osdmAllTables:ModelName>Relational_1</osdmAllTables:ModelName>
    <osdmAllTables:TablesCollection>
       <osdmAllTables:TableDetails>
@@ -153,18 +153,6 @@
                <osdmAllTables:FKDeleteRule/>
             </osdmAllTables:FKRTDetails>
          </osdmAllTables:FKRTCollection>
-         <osdmAllTables:FKRFCollection>
-            <osdmAllTables:FKRFDetails>
-               <osdmAllTables:FKName>NOTIFICACION_ALERTA_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferredFrom>NOTIFICACION</osdmAllTables:FKReferredFrom>
-               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
-               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
-               <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>id_alerta</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>ALERTA_id_alerta</osdmAllTables:FKReferredColumnName>
-               <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRFDetails>
-         </osdmAllTables:FKRFCollection>
       </osdmAllTables:TableDetails>
       <osdmAllTables:TableDetails>
          <osdmAllTables:TableName>DETALLE_SOLICITUD</osdmAllTables:TableName>
@@ -176,7 +164,7 @@
          <osdmAllTables:MVPrebuilt/>
          <osdmAllTables:MVQuery/>
          <osdmAllTables:QuantitativeInfoCollection>
-            <osdmAllTables:NumberOfColumns>5</osdmAllTables:NumberOfColumns>
+            <osdmAllTables:NumberOfColumns>6</osdmAllTables:NumberOfColumns>
             <osdmAllTables:NumberOfRowsMin>0</osdmAllTables:NumberOfRowsMin>
             <osdmAllTables:NumberOfRowsMax>9999999</osdmAllTables:NumberOfRowsMax>
             <osdmAllTables:ExpectedNumberOfRows>0</osdmAllTables:ExpectedNumberOfRows>
@@ -249,6 +237,19 @@
                <osdmAllTables:Security/>
                <osdmAllTables:PreferredAbbreviation/>
             </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>6</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>FARMACO_id_farmaco</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK>F</osdmAllTables:FK>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
          </osdmAllTables:ColumnsCollection>
          <osdmAllTables:IndexesCollection>
             <osdmAllTables:IndexDetails>
@@ -272,19 +273,17 @@
                <osdmAllTables:FKReferredColumnName>id_sol</osdmAllTables:FKReferredColumnName>
                <osdmAllTables:FKDeleteRule/>
             </osdmAllTables:FKRTDetails>
-         </osdmAllTables:FKRTCollection>
-         <osdmAllTables:FKRFCollection>
-            <osdmAllTables:FKRFDetails>
-               <osdmAllTables:FKName>FARMACO_DETALLE_SOLICITUD_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferredFrom>FARMACO</osdmAllTables:FKReferredFrom>
+            <osdmAllTables:FKRTDetails>
+               <osdmAllTables:FKName>DETALLE_SOLICITUD_FARMACO_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferringTo>FARMACO</osdmAllTables:FKReferringTo>
                <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
                <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
                <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>id_detalle</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>DETALLE_SOLICITUD_id_detalle</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKReferringColumnName>FARMACO_id_farmaco</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>id_farmaco</osdmAllTables:FKReferredColumnName>
                <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRFDetails>
-         </osdmAllTables:FKRFCollection>
+            </osdmAllTables:FKRTDetails>
+         </osdmAllTables:FKRTCollection>
       </osdmAllTables:TableDetails>
       <osdmAllTables:TableDetails>
          <osdmAllTables:TableName>ESTADO_USUARIO</osdmAllTables:TableName>
@@ -478,7 +477,7 @@
          <osdmAllTables:MVPrebuilt/>
          <osdmAllTables:MVQuery/>
          <osdmAllTables:QuantitativeInfoCollection>
-            <osdmAllTables:NumberOfColumns>8</osdmAllTables:NumberOfColumns>
+            <osdmAllTables:NumberOfColumns>11</osdmAllTables:NumberOfColumns>
             <osdmAllTables:NumberOfRowsMin>0</osdmAllTables:NumberOfRowsMin>
             <osdmAllTables:NumberOfRowsMax>9999999</osdmAllTables:NumberOfRowsMax>
             <osdmAllTables:ExpectedNumberOfRows>0</osdmAllTables:ExpectedNumberOfRows>
@@ -501,11 +500,11 @@
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>2</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>nombre</osdmAllTables:ColumnName>
+               <osdmAllTables:ColumnName>codigo</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
                <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>VARCHAR (50) </osdmAllTables:DataType>
+               <osdmAllTables:DataType>VARCHAR (13) </osdmAllTables:DataType>
                <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
                <osdmAllTables:DomainName/>
                <osdmAllTables:Formula/>
@@ -527,19 +526,6 @@
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>4</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>codigo</osdmAllTables:ColumnName>
-               <osdmAllTables:PK/>
-               <osdmAllTables:FK/>
-               <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>VARCHAR (13) </osdmAllTables:DataType>
-               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
-               <osdmAllTables:DomainName/>
-               <osdmAllTables:Formula/>
-               <osdmAllTables:Security/>
-               <osdmAllTables:PreferredAbbreviation/>
-            </osdmAllTables:ColumnDetails>
-            <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>5</osdmAllTables:Sequence>
                <osdmAllTables:ColumnName>uni_medida</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
                <osdmAllTables:FK/>
@@ -552,12 +538,25 @@
                <osdmAllTables:PreferredAbbreviation/>
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>6</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>stock</osdmAllTables:ColumnName>
+               <osdmAllTables:Sequence>5</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>principio_activo</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
                <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataType>VARCHAR (100) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>6</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>presentacion</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>VARCHAR (50) </osdmAllTables:DataType>
                <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
                <osdmAllTables:DomainName/>
                <osdmAllTables:Formula/>
@@ -566,11 +565,11 @@
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>7</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>HISTORIAL_AJUSTE_id_ajuste</osdmAllTables:ColumnName>
+               <osdmAllTables:ColumnName>concentracion</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
-               <osdmAllTables:FK>F</osdmAllTables:FK>
+               <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataType>VARCHAR (50) </osdmAllTables:DataType>
                <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
                <osdmAllTables:DomainName/>
                <osdmAllTables:Formula/>
@@ -579,11 +578,50 @@
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>8</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>DETALLE_SOLICITUD_id_detalle</osdmAllTables:ColumnName>
+               <osdmAllTables:ColumnName>nombre_generico</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
-               <osdmAllTables:FK>F</osdmAllTables:FK>
+               <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataType>VARCHAR (100) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>9</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>observacion</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M/>
+               <osdmAllTables:DataType>VARCHAR (250) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>10</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>nombre_comercial</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>VARCHAR (100) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>11</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>via_administracion</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>VARCHAR (50) </osdmAllTables:DataType>
                <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
                <osdmAllTables:DomainName/>
                <osdmAllTables:Formula/>
@@ -602,32 +640,30 @@
                <osdmAllTables:IndexSortOrder>ASC</osdmAllTables:IndexSortOrder>
             </osdmAllTables:IndexDetails>
          </osdmAllTables:IndexesCollection>
-         <osdmAllTables:FKRTCollection>
-            <osdmAllTables:FKRTDetails>
-               <osdmAllTables:FKName>FARMACO_DETALLE_SOLICITUD_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferringTo>DETALLE_SOLICITUD</osdmAllTables:FKReferringTo>
-               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
-               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
-               <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>DETALLE_SOLICITUD_id_detalle</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>id_detalle</osdmAllTables:FKReferredColumnName>
-               <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRTDetails>
-            <osdmAllTables:FKRTDetails>
-               <osdmAllTables:FKName>FARMACO_HISTORIAL_AJUSTE_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferringTo>HISTORIAL_AJUSTE</osdmAllTables:FKReferringTo>
-               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
-               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
-               <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>HISTORIAL_AJUSTE_id_ajuste</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>id_ajuste</osdmAllTables:FKReferredColumnName>
-               <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRTDetails>
-         </osdmAllTables:FKRTCollection>
          <osdmAllTables:FKRFCollection>
             <osdmAllTables:FKRFDetails>
                <osdmAllTables:FKName>ALERTA_FARMACO_FK</osdmAllTables:FKName>
                <osdmAllTables:FKReferredFrom>ALERTA</osdmAllTables:FKReferredFrom>
+               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
+               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
+               <osdmAllTables:FKInArc/>
+               <osdmAllTables:FKReferringColumnName>id_farmaco</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>FARMACO_id_farmaco</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKDeleteRule/>
+            </osdmAllTables:FKRFDetails>
+            <osdmAllTables:FKRFDetails>
+               <osdmAllTables:FKName>DETALLE_SOLICITUD_FARMACO_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferredFrom>DETALLE_SOLICITUD</osdmAllTables:FKReferredFrom>
+               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
+               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
+               <osdmAllTables:FKInArc/>
+               <osdmAllTables:FKReferringColumnName>id_farmaco</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>FARMACO_id_farmaco</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKDeleteRule/>
+            </osdmAllTables:FKRFDetails>
+            <osdmAllTables:FKRFDetails>
+               <osdmAllTables:FKName>HISTORIAL_AJUSTE_FARMACO_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferredFrom>HISTORIAL_AJUSTE</osdmAllTables:FKReferredFrom>
                <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
                <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
                <osdmAllTables:FKInArc/>
@@ -657,7 +693,7 @@
          <osdmAllTables:MVPrebuilt/>
          <osdmAllTables:MVQuery/>
          <osdmAllTables:QuantitativeInfoCollection>
-            <osdmAllTables:NumberOfColumns>8</osdmAllTables:NumberOfColumns>
+            <osdmAllTables:NumberOfColumns>9</osdmAllTables:NumberOfColumns>
             <osdmAllTables:NumberOfRowsMin>0</osdmAllTables:NumberOfRowsMin>
             <osdmAllTables:NumberOfRowsMax>9999999</osdmAllTables:NumberOfRowsMax>
             <osdmAllTables:ExpectedNumberOfRows>0</osdmAllTables:ExpectedNumberOfRows>
@@ -769,6 +805,19 @@
                <osdmAllTables:Security/>
                <osdmAllTables:PreferredAbbreviation/>
             </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>9</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>FARMACO_id_farmaco</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK>F</osdmAllTables:FK>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
          </osdmAllTables:ColumnsCollection>
          <osdmAllTables:IndexesCollection>
             <osdmAllTables:IndexDetails>
@@ -783,6 +832,16 @@
          </osdmAllTables:IndexesCollection>
          <osdmAllTables:FKRTCollection>
             <osdmAllTables:FKRTDetails>
+               <osdmAllTables:FKName>HISTORIAL_AJUSTE_FARMACO_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferringTo>FARMACO</osdmAllTables:FKReferringTo>
+               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
+               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
+               <osdmAllTables:FKInArc/>
+               <osdmAllTables:FKReferringColumnName>FARMACO_id_farmaco</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>id_farmaco</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKDeleteRule/>
+            </osdmAllTables:FKRTDetails>
+            <osdmAllTables:FKRTDetails>
                <osdmAllTables:FKName>HISTORIAL_AJUSTE_LOTE_FK</osdmAllTables:FKName>
                <osdmAllTables:FKReferringTo>LOTE</osdmAllTables:FKReferringTo>
                <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
@@ -793,18 +852,6 @@
                <osdmAllTables:FKDeleteRule/>
             </osdmAllTables:FKRTDetails>
          </osdmAllTables:FKRTCollection>
-         <osdmAllTables:FKRFCollection>
-            <osdmAllTables:FKRFDetails>
-               <osdmAllTables:FKName>FARMACO_HISTORIAL_AJUSTE_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferredFrom>FARMACO</osdmAllTables:FKReferredFrom>
-               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
-               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
-               <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>id_ajuste</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>HISTORIAL_AJUSTE_id_ajuste</osdmAllTables:FKReferredColumnName>
-               <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRFDetails>
-         </osdmAllTables:FKRFCollection>
       </osdmAllTables:TableDetails>
       <osdmAllTables:TableDetails>
          <osdmAllTables:TableName>LOTE</osdmAllTables:TableName>
@@ -816,7 +863,7 @@
          <osdmAllTables:MVPrebuilt/>
          <osdmAllTables:MVQuery/>
          <osdmAllTables:QuantitativeInfoCollection>
-            <osdmAllTables:NumberOfColumns>7</osdmAllTables:NumberOfColumns>
+            <osdmAllTables:NumberOfColumns>9</osdmAllTables:NumberOfColumns>
             <osdmAllTables:NumberOfRowsMin>0</osdmAllTables:NumberOfRowsMin>
             <osdmAllTables:NumberOfRowsMax>9999999</osdmAllTables:NumberOfRowsMax>
             <osdmAllTables:ExpectedNumberOfRows>0</osdmAllTables:ExpectedNumberOfRows>
@@ -915,6 +962,32 @@
                <osdmAllTables:Security/>
                <osdmAllTables:PreferredAbbreviation/>
             </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>8</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>PROVEEDOR_id_proveedor</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK>F</osdmAllTables:FK>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>9</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>activo</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>Boolean (1) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
          </osdmAllTables:ColumnsCollection>
          <osdmAllTables:IndexesCollection>
             <osdmAllTables:IndexDetails>
@@ -928,6 +1001,16 @@
             </osdmAllTables:IndexDetails>
          </osdmAllTables:IndexesCollection>
          <osdmAllTables:FKRTCollection>
+            <osdmAllTables:FKRTDetails>
+               <osdmAllTables:FKName>LOTE_PROVEEDOR_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferringTo>PROVEEDOR</osdmAllTables:FKReferringTo>
+               <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
+               <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
+               <osdmAllTables:FKInArc/>
+               <osdmAllTables:FKReferringColumnName>PROVEEDOR_id_proveedor</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>id_proveedor</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKDeleteRule/>
+            </osdmAllTables:FKRTDetails>
             <osdmAllTables:FKRTDetails>
                <osdmAllTables:FKName>LOTE_FARMACO_FK</osdmAllTables:FKName>
                <osdmAllTables:FKReferringTo>FARMACO</osdmAllTables:FKReferringTo>
@@ -953,16 +1036,16 @@
          </osdmAllTables:FKRFCollection>
       </osdmAllTables:TableDetails>
       <osdmAllTables:TableDetails>
-         <osdmAllTables:TableName>NOTIFICACION</osdmAllTables:TableName>
-         <osdmAllTables:EncodedTableName>26659843-1D4E4755B8CA</osdmAllTables:EncodedTableName>
-         <osdmAllTables:FunctionalName>NOTIFICACION</osdmAllTables:FunctionalName>
+         <osdmAllTables:TableName>PROVEEDOR</osdmAllTables:TableName>
+         <osdmAllTables:EncodedTableName>20613446-A1C6C5B36D04</osdmAllTables:EncodedTableName>
+         <osdmAllTables:FunctionalName>PROVEEDOR</osdmAllTables:FunctionalName>
          <osdmAllTables:Abbreviation/>
          <osdmAllTables:ClassificationTypeName/>
          <osdmAllTables:ObjectTypeName/>
          <osdmAllTables:MVPrebuilt/>
          <osdmAllTables:MVQuery/>
          <osdmAllTables:QuantitativeInfoCollection>
-            <osdmAllTables:NumberOfColumns>6</osdmAllTables:NumberOfColumns>
+            <osdmAllTables:NumberOfColumns>5</osdmAllTables:NumberOfColumns>
             <osdmAllTables:NumberOfRowsMin>0</osdmAllTables:NumberOfRowsMin>
             <osdmAllTables:NumberOfRowsMax>9999999</osdmAllTables:NumberOfRowsMax>
             <osdmAllTables:ExpectedNumberOfRows>0</osdmAllTables:ExpectedNumberOfRows>
@@ -972,7 +1055,7 @@
          <osdmAllTables:ColumnsCollection>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>1</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>id_notificacion</osdmAllTables:ColumnName>
+               <osdmAllTables:ColumnName>id_proveedor</osdmAllTables:ColumnName>
                <osdmAllTables:PK>P</osdmAllTables:PK>
                <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
@@ -985,7 +1068,46 @@
             </osdmAllTables:ColumnDetails>
             <osdmAllTables:ColumnDetails>
                <osdmAllTables:Sequence>2</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>titulo</osdmAllTables:ColumnName>
+               <osdmAllTables:ColumnName>nombre</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>VARCHAR (100) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>3</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>direccion</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>VARCHAR (100) </osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>4</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>telefono</osdmAllTables:ColumnName>
+               <osdmAllTables:PK/>
+               <osdmAllTables:FK/>
+               <osdmAllTables:M>Y</osdmAllTables:M>
+               <osdmAllTables:DataType>NUMERIC (20)</osdmAllTables:DataType>
+               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
+               <osdmAllTables:DomainName/>
+               <osdmAllTables:Formula/>
+               <osdmAllTables:Security/>
+               <osdmAllTables:PreferredAbbreviation/>
+            </osdmAllTables:ColumnDetails>
+            <osdmAllTables:ColumnDetails>
+               <osdmAllTables:Sequence>5</osdmAllTables:Sequence>
+               <osdmAllTables:ColumnName>email</osdmAllTables:ColumnName>
                <osdmAllTables:PK/>
                <osdmAllTables:FK/>
                <osdmAllTables:M>Y</osdmAllTables:M>
@@ -996,82 +1118,30 @@
                <osdmAllTables:Security/>
                <osdmAllTables:PreferredAbbreviation/>
             </osdmAllTables:ColumnDetails>
-            <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>3</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>mensaje</osdmAllTables:ColumnName>
-               <osdmAllTables:PK/>
-               <osdmAllTables:FK/>
-               <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>VARCHAR (250) </osdmAllTables:DataType>
-               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
-               <osdmAllTables:DomainName/>
-               <osdmAllTables:Formula/>
-               <osdmAllTables:Security/>
-               <osdmAllTables:PreferredAbbreviation/>
-            </osdmAllTables:ColumnDetails>
-            <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>4</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>tipo_noti</osdmAllTables:ColumnName>
-               <osdmAllTables:PK/>
-               <osdmAllTables:FK/>
-               <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>VARCHAR (20) </osdmAllTables:DataType>
-               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
-               <osdmAllTables:DomainName/>
-               <osdmAllTables:Formula/>
-               <osdmAllTables:Security/>
-               <osdmAllTables:PreferredAbbreviation/>
-            </osdmAllTables:ColumnDetails>
-            <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>5</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>fec_creacion</osdmAllTables:ColumnName>
-               <osdmAllTables:PK/>
-               <osdmAllTables:FK/>
-               <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>Date</osdmAllTables:DataType>
-               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
-               <osdmAllTables:DomainName/>
-               <osdmAllTables:Formula/>
-               <osdmAllTables:Security/>
-               <osdmAllTables:PreferredAbbreviation/>
-            </osdmAllTables:ColumnDetails>
-            <osdmAllTables:ColumnDetails>
-               <osdmAllTables:Sequence>6</osdmAllTables:Sequence>
-               <osdmAllTables:ColumnName>ALERTA_id_alerta</osdmAllTables:ColumnName>
-               <osdmAllTables:PK/>
-               <osdmAllTables:FK>F</osdmAllTables:FK>
-               <osdmAllTables:M>Y</osdmAllTables:M>
-               <osdmAllTables:DataType>NUMERIC</osdmAllTables:DataType>
-               <osdmAllTables:DataTypeKind>LT</osdmAllTables:DataTypeKind>
-               <osdmAllTables:DomainName/>
-               <osdmAllTables:Formula/>
-               <osdmAllTables:Security/>
-               <osdmAllTables:PreferredAbbreviation/>
-            </osdmAllTables:ColumnDetails>
          </osdmAllTables:ColumnsCollection>
          <osdmAllTables:IndexesCollection>
             <osdmAllTables:IndexDetails>
-               <osdmAllTables:IndexName>NOTIFICACION_PK</osdmAllTables:IndexName>
+               <osdmAllTables:IndexName>PROVEEDOR_PK</osdmAllTables:IndexName>
                <osdmAllTables:IndexState>PK</osdmAllTables:IndexState>
                <osdmAllTables:IndexFunctional/>
                <osdmAllTables:IndexSpatial/>
                <osdmAllTables:IndexExpression/>
-               <osdmAllTables:IndexColumnName>id_notificacion</osdmAllTables:IndexColumnName>
+               <osdmAllTables:IndexColumnName>id_proveedor</osdmAllTables:IndexColumnName>
                <osdmAllTables:IndexSortOrder>ASC</osdmAllTables:IndexSortOrder>
             </osdmAllTables:IndexDetails>
          </osdmAllTables:IndexesCollection>
-         <osdmAllTables:FKRTCollection>
-            <osdmAllTables:FKRTDetails>
-               <osdmAllTables:FKName>NOTIFICACION_ALERTA_FK</osdmAllTables:FKName>
-               <osdmAllTables:FKReferringTo>ALERTA</osdmAllTables:FKReferringTo>
+         <osdmAllTables:FKRFCollection>
+            <osdmAllTables:FKRFDetails>
+               <osdmAllTables:FKName>LOTE_PROVEEDOR_FK</osdmAllTables:FKName>
+               <osdmAllTables:FKReferredFrom>LOTE</osdmAllTables:FKReferredFrom>
                <osdmAllTables:FKMandatory>Y</osdmAllTables:FKMandatory>
                <osdmAllTables:FKTransferable>Y</osdmAllTables:FKTransferable>
                <osdmAllTables:FKInArc/>
-               <osdmAllTables:FKReferringColumnName>ALERTA_id_alerta</osdmAllTables:FKReferringColumnName>
-               <osdmAllTables:FKReferredColumnName>id_alerta</osdmAllTables:FKReferredColumnName>
+               <osdmAllTables:FKReferringColumnName>id_proveedor</osdmAllTables:FKReferringColumnName>
+               <osdmAllTables:FKReferredColumnName>PROVEEDOR_id_proveedor</osdmAllTables:FKReferredColumnName>
                <osdmAllTables:FKDeleteRule/>
-            </osdmAllTables:FKRTDetails>
-         </osdmAllTables:FKRTCollection>
+            </osdmAllTables:FKRFDetails>
+         </osdmAllTables:FKRFCollection>
       </osdmAllTables:TableDetails>
       <osdmAllTables:TableDetails>
          <osdmAllTables:TableName>REGISTRO_USUARIO</osdmAllTables:TableName>
