@@ -83,7 +83,7 @@ export default function Component() {
       }
       
       if (!usuario) {
-        setErrors({ rut: "RUT o contraseña incorrectos, o usuario inactivo." })
+        setErrors({ rut: "Credenciales incorrectas o cuenta inactiva." })
         setIsLoading(false)
         return
       }

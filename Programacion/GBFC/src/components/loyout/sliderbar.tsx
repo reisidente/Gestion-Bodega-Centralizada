@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { Home, Package, FileText, AlertTriangle, BarChart3, Plus, Menu, X, LogOut, Truck } from "lucide-react"
+import { Home, Package, FileText, AlertTriangle, BarChart3, Plus, Menu, X, LogOut, Truck, Users } from "lucide-react"
 import { Button } from "../ui/button"
 import { useIsAdmin } from "../../hooks/useIsAdmin"
 import { supabase } from "../../libs/supabase"
@@ -94,16 +94,20 @@ export function Sidebar({ activeSection, children }: SidebarProps) {
             ))}
             {isAdmin && (
               <motion.button
-                onClick={() => navigate("/nuevo-usuario")}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900`}
+                onClick={() => navigate("/usuarios")}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 mb-1 ${
+                  activeSection === "usuarios"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Plus className="h-4 w-4 flex-shrink-0" />
-                {!isCollapsed && <span className="text-sm font-medium">Nuevo Usuario</span>}
+                <Users className="h-4 w-4 flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">Usuarios</span>}
               </motion.button>
             )}
           </nav>

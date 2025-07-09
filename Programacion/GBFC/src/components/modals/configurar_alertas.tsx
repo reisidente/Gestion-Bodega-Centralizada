@@ -19,6 +19,10 @@ export function ConfigAlertasModal({
 }: ConfigAlertasModalProps) {
   const [diasVencimiento, setDiasVencimiento] = useState(initialConfig.diasVencimiento ?? 30)
   const [cantidadMinimaStock, setCantidadMinimaStock] = useState(initialConfig.cantidadMinimaStock ?? 50)
+  
+  // Validaciones
+  const isValidDiasVencimiento = diasVencimiento >= 15
+  const isValidForm = isValidDiasVencimiento && cantidadMinimaStock > 0
 
   return (
     <BaseModal open={open} onClose={onClose} widthClass="max-w-2xl">
@@ -30,13 +34,20 @@ export function ConfigAlertasModal({
         <label className="block font-medium mb-1">Días antes del vencimiento</label>
         <input
           type="number"
-          min={1}
-          className="w-full border rounded-md px-3 py-2 mb-1"
+          min={15}
+          className={`w-full border rounded-md px-3 py-2 mb-1 ${
+            !isValidDiasVencimiento ? 'border-red-500' : 'border-gray-300'
+          }`}
           value={diasVencimiento}
           onChange={e => setDiasVencimiento(Number(e.target.value))}
         />
+        {!isValidDiasVencimiento && (
+          <div className="text-red-500 text-sm mb-2">
+            Los días de vencimiento deben ser mínimo 15 días
+          </div>
+        )}
         <div className="text-gray-400 text-sm mb-2">
-          Número de días antes del vencimiento para comenzar a generar alertas
+          Número de días antes del vencimiento para comenzar a generar alertas (mínimo 15 días)
         </div>
       </div>
       <div className="mb-8">
@@ -66,8 +77,13 @@ export function ConfigAlertasModal({
           Cancelar
         </button>
         <button
-          className="px-6 py-2 rounded-md bg-black text-white font-medium hover:bg-gray-900"
-          onClick={() => onSave?.({ diasVencimiento, cantidadMinimaStock })}
+          className={`px-6 py-2 rounded-md font-medium ${
+            isValidForm
+              ? 'bg-black text-white hover:bg-gray-900'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+          onClick={() => isValidForm && onSave?.({ diasVencimiento, cantidadMinimaStock })}
+          disabled={!isValidForm}
         >
           Guardar configuración
         </button>
